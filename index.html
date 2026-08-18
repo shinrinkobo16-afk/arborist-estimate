@@ -82,7 +82,7 @@
     color:var(--muted);
     margin-bottom:2px;
   }
-  input, select{
+  input, select, textarea{
     width:100%;
     padding:9px 8px;
     border:1px solid var(--border);
@@ -90,7 +90,11 @@
     font-size:15px;
     background:#fff;
   }
-  input:focus, select:focus{
+  textarea{
+    resize:vertical;
+    font-family:inherit;
+  }
+  input:focus, select:focus, textarea:focus{
     outline:2px solid var(--main);
   }
   button{
@@ -489,6 +493,7 @@ function defaultSettings(){
       {id: uid(), label:'レンタル料', price:20000}
     ],
     carryFeePresets: [
+      {id: uid(), label:'なし', price:0},
       {id: uid(), label:'軽作業', price:5000},
       {id: uid(), label:'標準', price:10000},
       {id: uid(), label:'手間あり(段差・狭小など)', price:15000},
@@ -517,7 +522,11 @@ function loadSettings(){
   if(!raw) return defaultSettings();
   try{
     const parsed = JSON.parse(raw);
-    return Object.assign(defaultSettings(), parsed);
+    const merged = Object.assign(defaultSettings(), parsed);
+    if(!merged.carryFeePresets.some(p=>p.price===0)){
+      merged.carryFeePresets.unshift({id: uid(), label:'なし', price:0});
+    }
+    return merged;
   }catch(e){
     return defaultSettings();
   }
@@ -539,6 +548,7 @@ function addTreeItem(){
   items.push({
     id: uid(), type:'tree',
     work:'伐採',
+    memo:'',
     labors: [ {id: uid(), roleId: role.id, count: 1} ],
     diameter: 30,
     length: 3,
@@ -554,6 +564,7 @@ function addGardenItem(){
   const role = settings.laborRoles[0] || {id:'', name:'', price:0};
   items.push({
     id: uid(), type:'garden',
+    memo:'',
     labors: [ {id: uid(), roleId: role.id, count: 1} ],
     presetId: (settings.disposalPresets[0]||{}).id || '',
     machines: [],
@@ -686,7 +697,9 @@ function ceilToDisposalTier(amount){
   return Math.ceil(amount/5000)*5000;
 }
 function treeDisposalAmount(it){
-  return ceilToDisposalTier(treeDisposalRawAmount(it));
+  const raw = treeDisposalRawAmount(it);
+  if(raw <= 0) return 0;
+  return ceilToDisposalTier(raw);
 }
 function gardenDisposalAmount(it){
   const p = settings.disposalPresets.find(p=>p.id===it.presetId);
@@ -877,6 +890,9 @@ function renderItemCard(it){
       </div>
       <p class="note">材積 約${treeDisposalVolume(it).toFixed(3)}m3 × 比重${settings.woodDensity} × 1000 = 約${Math.round(treeDisposalWeight(it)).toLocaleString('ja-JP')}kg × ${settings.disposalPricePerKg}円/kg = 計算上 約${yen(treeDisposalRawAmount(it))} → 処分費(丸め) ${yen(treeDisposalAmount(it))}</p>
 
+      <label>メモ(樹種・作業希望など)</label>
+      <textarea rows="2" onchange="updateItem('${it.id}','memo',this.value)">${escapeHtml(it.memo)}</textarea>
+
       <label>機械損料(複数追加できます)</label>
       ${machinesHtmlFor(it)}
       <div class="btn-row no-print" style="margin-top:0">
@@ -923,6 +939,9 @@ function renderItemCard(it){
           </select>
         </div>
       </div>
+
+      <label>メモ(作業希望など)</label>
+      <textarea rows="2" onchange="updateItem('${it.id}','memo',this.value)">${escapeHtml(it.memo)}</textarea>
 
       <label>機械損料(複数追加できます)</label>
       ${machinesHtmlFor(it)}
@@ -1220,6 +1239,7 @@ function itemPrintDetailLines(it){
   const lines = [];
   if(it.type==='tree'){
     lines.push(it.work);
+    if(it.memo) lines.push(`メモ: ${it.memo}`);
     (it.labors||[]).forEach(l=>{
       const role = settings.laborRoles.find(r=>r.id===l.roleId);
       if(role) lines.push(`人工: ${role.name} ${l.count}人工 ${yen(role.price*(parseFloat(l.count)||0))}`);
@@ -1238,6 +1258,7 @@ function itemPrintDetailLines(it){
     if(parseFloat(it.other)) lines.push(`その他 ${yen(parseFloat(it.other))}`);
   }
   if(it.type==='garden'){
+    if(it.memo) lines.push(`メモ: ${it.memo}`);
     (it.labors||[]).forEach(l=>{
       const role = settings.laborRoles.find(r=>r.id===l.roleId);
       if(role) lines.push(`人工: ${role.name} ${l.count}人工 ${yen(role.price*(parseFloat(l.count)||0))}`);
