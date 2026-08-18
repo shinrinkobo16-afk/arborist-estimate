@@ -392,7 +392,7 @@
     <button class="btn secondary" onclick="doPrint()">印刷する(お客様用)</button>
     <button class="btn secondary" onclick="saveToFile()">見積もりをファイル保存</button>
     <button class="btn secondary" onclick="document.getElementById('loadFileInput').click()">見積もりを読み込み</button>
-    <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadFromFile(event)">
+    <input type="file" id="loadFileInput" accept=".json,.txt" style="display:none" onchange="loadFromFile(event)">
     <button class="btn secondary" onclick="exportLedgerCsv()">台帳用CSVを共有／保存</button>
     <button class="btn danger" onclick="clearAll()">新規作成(クリア)</button>
   </div>
@@ -1977,8 +1977,8 @@ async function saveToFile(){
     },
     items: items
   };
-  const nameForFile = (data.info.customerName || '見積') + '_' + (data.info.date || '') + '.json';
-  await shareOrDownload([JSON.stringify(data, null, 2)], nameForFile, 'application/json', '共有しました', 'ファイルに保存しました');
+  const nameForFile = (data.info.customerName || '見積') + '_' + (data.info.date || '') + '.txt';
+  await shareOrDownload([JSON.stringify(data, null, 2)], nameForFile, 'text/plain', '共有しました', 'ファイルに保存しました');
 }
 
 function loadFromFile(event){
