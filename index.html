@@ -451,6 +451,16 @@
       <input type="text" id="s_companyInfo" placeholder="住所・電話番号など" style="margin-top:6px;">
     </div>
 
+    <div class="settings-group">
+      <h3>設定のバックアップ・他端末へのコピー</h3>
+      <p class="note">この単価設定をファイルに書き出して保存したり、別のスマホ・PCに読み込んで同じ単価を使うことができます。</p>
+      <div class="btn-row">
+        <button class="btn small secondary" onclick="exportSettings()">設定を書き出す</button>
+        <button class="btn small secondary" onclick="document.getElementById('importSettingsFile').click()">設定を読み込む</button>
+      </div>
+      <input type="file" id="importSettingsFile" accept="application/json" style="display:none" onchange="importSettings(event)">
+    </div>
+
     <div class="btn-row">
       <button class="btn" onclick="saveSettings()">保存して閉じる</button>
     </div>
@@ -1232,6 +1242,38 @@ function saveSettings(){
   showStatus('単価設定を保存しました');
 }
 
+function exportSettings(){
+  const blob = new Blob([JSON.stringify(settings, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'arborist_settings.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showStatus('設定をファイルに書き出しました');
+}
+
+function importSettings(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      settings = Object.assign(defaultSettings(), parsed);
+      persistSettings();
+      openSettings();
+      showStatus('設定を読み込みました');
+    }catch(e){
+      alert('読み込みに失敗しました。書き出した設定ファイル(.json)を選んでください。');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
 document.getElementById('settingsBtn').addEventListener('click', openSettings);
 
 /* ===== 印刷 ===== */
@@ -1239,7 +1281,6 @@ function itemPrintDetailLines(it){
   const lines = [];
   if(it.type==='tree'){
     lines.push(it.work);
-    if(it.memo) lines.push(`メモ: ${it.memo}`);
     (it.labors||[]).forEach(l=>{
       const role = settings.laborRoles.find(r=>r.id===l.roleId);
       if(role) lines.push(`人工: ${role.name} ${l.count}人工 ${yen(role.price*(parseFloat(l.count)||0))}`);
@@ -1258,7 +1299,6 @@ function itemPrintDetailLines(it){
     if(parseFloat(it.other)) lines.push(`その他 ${yen(parseFloat(it.other))}`);
   }
   if(it.type==='garden'){
-    if(it.memo) lines.push(`メモ: ${it.memo}`);
     (it.labors||[]).forEach(l=>{
       const role = settings.laborRoles.find(r=>r.id===l.roleId);
       if(role) lines.push(`人工: ${role.name} ${l.count}人工 ${yen(role.price*(parseFloat(l.count)||0))}`);
