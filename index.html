@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>現場見積作成ツール</title>
+<style>
+  :root{
+    --main:#2f6b3a;
+    --main-dark:#204a28;
+    --accent:#c9722a;
+    --bg:#f4f5f1;
+    --card:#ffffff;
+    --border:#d8dbd2;
+    --text:#2b2b28;
+    --muted:#767a70;
+    --danger:#b23b3b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding-bottom:60px;
+  }
+  header.appbar{
+    background:var(--main);
+    color:#fff;
+    padding:14px 16px;
+    position:sticky;
+    top:0;
+    z-index:20;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  }
+  header.appbar h1{
+    font-size:17px;
+    margin:0;
+  }
+  header.appbar button{
+    background:rgba(255,255,255,0.15);
+    color:#fff;
+    border:1px solid rgba(255,255,255,0.5);
+    border-radius:6px;
+    padding:6px 10px;
+    font-size:13px;
+  }
+  main{
+    max-width:760px;
+    margin:0 auto;
+    padding:12px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:14px;
+  }
+  .card h2{
+    font-size:15px;
+    margin:0 0 10px 0;
+    color:var(--main-dark);
+    border-left:4px solid var(--accent);
+    padding-left:8px;
+  }
+  .row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .row > div{
+    flex:1 1 140px;
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:2px;
+  }
+  input, select{
+    width:100%;
+    padding:9px 8px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-size:15px;
+    background:#fff;
+  }
+  input:focus, select:focus{
+    outline:2px solid var(--main);
+  }
+  button{
+    cursor:pointer;
+    font-size:14px;
+  }
+  .btn{
+    background:var(--main);
+    color:#fff;
+    border:none;
+    border-radius:7px;
+    padding:10px 14px;
+  }
+  .btn.secondary{
+    background:#fff;
+    color:var(--main);
+    border:1px solid var(--main);
+  }
+  .btn.danger{
+    background:#fff;
+    color:var(--danger);
+    border:1px solid var(--danger);
+  }
+  .btn.accent{
+    background:var(--accent);
+  }
+  .btn.small{
+    padding:6px 10px;
+    font-size:12px;
+  }
+  .btn-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:8px;
+  }
+  .item-card{
+    border:1px solid var(--border);
+    border-left:5px solid var(--main);
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:10px;
+    background:#fbfbf9;
+  }
+  .item-card.grass{ border-left-color:#4a8c3f; }
+  .item-card.garden{ border-left-color:#3f8c7a; }
+  .item-card.pesticide{ border-left-color:#8c6d3f; }
+  .item-card.transport{ border-left-color:#3f6a8c; }
+  .item-card.other{ border-left-color:#8c3f6d; }
+  .item-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:6px;
+  }
+  .item-head .tag{
+    font-size:12px;
+    font-weight:bold;
+    color:var(--main-dark);
+  }
+  .item-subtotal{
+    text-align:right;
+    font-weight:bold;
+    margin-top:6px;
+    font-size:14px;
+  }
+  .taxflag{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:13px;
+    margin-top:4px;
+  }
+  .taxflag input{ width:auto; }
+  .note{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  .totals-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:15px;
+  }
+  .totals-table td{
+    padding:6px 4px;
+  }
+  .totals-table tr.grand td{
+    font-size:19px;
+    font-weight:bold;
+    border-top:2px solid var(--main);
+    color:var(--main-dark);
+  }
+  .totals-table td:last-child{
+    text-align:right;
+  }
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    z-index:50;
+    overflow:auto;
+    padding:20px 10px;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background:#fff;
+    border-radius:10px;
+    padding:16px;
+    max-width:600px;
+    width:100%;
+  }
+  .modal h2{
+    margin-top:0;
+    color:var(--main-dark);
+  }
+  .settings-group{
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:12px;
+  }
+  .settings-group h3{
+    font-size:13px;
+    margin:0 0 8px 0;
+    color:var(--main-dark);
+  }
+  .role-row, .preset-row{
+    display:flex;
+    gap:6px;
+    margin-bottom:6px;
+    align-items:center;
+  }
+  .role-row input{ flex:1; }
+  .preset-row input{ flex:1; }
+  .close-x{
+    float:right;
+    background:none;
+    border:none;
+    font-size:20px;
+    color:var(--muted);
+  }
+  .status-msg{
+    position:fixed;
+    bottom:16px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--main-dark);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:20px;
+    font-size:13px;
+    z-index:100;
+    opacity:0;
+    transition:opacity .3s;
+    pointer-events:none;
+  }
+  .status-msg.show{ opacity:1; }
+
+  #printArea{ display:none; }
+
+  @media print{
+    header.appbar, .no-print, .modal-overlay { display:none !important; }
+    body{ background:#fff; padding:0; }
+    main{ display:none; }
+    #printArea{
+      display:block;
+      padding:10px;
+      font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    }
+    #printArea h1{
+      text-align:center;
+      font-size:22px;
+      margin-bottom:4px;
+    }
+    #printArea .p-meta{
+      display:flex;
+      justify-content:space-between;
+      font-size:13px;
+      margin-bottom:10px;
+    }
+    #printArea table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+      margin-bottom:10px;
+    }
+    #printArea th, #printArea td{
+      border:1px solid #999;
+      padding:5px 6px;
+      text-align:left;
+    }
+    #printArea th{ background:#eee; }
+    #printArea .p-totals{
+      width:280px;
+      margin-left:auto;
+      font-size:14px;
+    }
+    #printArea .p-totals td{ border:none; padding:3px 4px; }
+    #printArea .p-totals tr.grand td{
+      border-top:2px solid #333;
+      font-weight:bold;
+      font-size:16px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <h1>現場見積作成ツール</h1>
+  <button id="settingsBtn">単価設定</button>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>基本情報</h2>
+    <div class="row">
+      <div>
+        <label>お客様名</label>
+        <input type="text" id="customerName" placeholder="例: 山田様">
+      </div>
+      <div>
+        <label>現場住所</label>
+        <input type="text" id="siteAddress" placeholder="例: ○○市○○町1-2-3">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>見積日</label>
+        <input type="date" id="estimateDate">
+      </div>
+      <div>
+        <label>見積番号</label>
+        <input type="text" id="estimateNo">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>見積項目</h2>
+    <div id="itemsContainer"></div>
+    <div class="btn-row no-print">
+      <button class="btn" onclick="addTreeItem()">＋樹木作業を追加</button>
+      <button class="btn" style="background:#3f8c7a" onclick="addGardenItem()">＋お庭を追加</button>
+      <button class="btn accent" onclick="addGrassItem()">＋草刈りを追加</button>
+      <button class="btn secondary" onclick="addPesticideItem()">＋薬剤散布を追加</button>
+      <button class="btn secondary" onclick="addTransportItem()">＋交通費を追加</button>
+      <button class="btn secondary" onclick="addOtherItem()">＋その他項目を追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>合計</h2>
+    <table class="totals-table">
+      <tr><td>課税対象 小計</td><td id="taxableSubtotal">0円</td></tr>
+      <tr><td>消費税(10%)</td><td id="taxAmount">0円</td></tr>
+      <tr><td>非課税 小計(交通費など)</td><td id="nontaxSubtotal">0円</td></tr>
+      <tr class="grand"><td>合計金額</td><td id="grandTotal">0円</td></tr>
+    </table>
+  </div>
+
+  <div class="btn-row no-print" style="margin-bottom:8px;">
+    <button class="btn accent" id="bulkSaveBtn" onclick="saveAllForMyself()">自分用一括保存 ①データ保存 をタップ</button>
+  </div>
+  <p class="note no-print" style="margin-top:-4px;margin-bottom:14px;">同じボタンをあと2回タップすると②台帳共有→③PDF保存の順に進みます(ブラウザが連続保存をブロックしないよう、1タップにつき1つずつ実行します)。</p>
+  <div class="btn-row no-print" style="margin-bottom:30px;">
+    <button class="btn" onclick="doPrint()">印刷・PDFで保存(お客様用)</button>
+    <button class="btn secondary" onclick="saveToFile()">見積もりをファイル保存</button>
+    <button class="btn secondary" onclick="document.getElementById('loadFileInput').click()">見積もりを読み込み</button>
+    <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadFromFile(event)">
+    <button class="btn secondary" onclick="exportLedgerCsv()">台帳用CSVを共有／保存</button>
+    <button class="btn danger" onclick="clearAll()">新規作成(クリア)</button>
+  </div>
+
+</main>
+
+<!-- 設定モーダル -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <button class="close-x" onclick="closeSettings()">×</button>
+    <h2>単価設定</h2>
+    <p class="note">ここで設定した金額が、見積項目を追加したときの初期値になります。値上げ・値下げしたらここを変更してください。すでに追加済みの項目には影響しません。</p>
+
+    <div class="settings-group">
+      <h3>人工単価(役割ごと)</h3>
+      <div id="roleList"></div>
+      <button class="btn small secondary" onclick="addRole()">＋役割を追加</button>
+    </div>
+
+    <div class="settings-group">
+      <h3>処分費(お庭用・プルダウン金額)</h3>
+      <div id="presetList"></div>
+      <button class="btn small secondary" onclick="addPreset()">＋金額を追加</button>
+    </div>
+
+    <div class="settings-group">
+      <h3>処分費(巨木・自動計算)</h3>
+      <div class="row">
+        <div><label>木の比重</label><input type="number" step="0.01" id="s_density"></div>
+        <div><label>処分単価(円 / kg)</label><input type="number" id="s_pricePerKg"></div>
+      </div>
+      <p class="note">材積(m3) = 円周率 ×(直径÷2)²× 長さ 、重さ(kg) = 材積 × 比重 × 1000 として概算し、そこに円/kgをかけます。</p>
+    </div>
+
+    <div class="settings-group">
+      <h3>機械損料(複数追加・日数で乗算)</h3>
+      <div id="machinePresetList"></div>
+      <button class="btn small secondary" onclick="addMachinePreset()">＋金額を追加</button>
+    </div>
+
+    <div class="settings-group">
+      <h3>追加項目(ギア損料・レンタル料など・複数追加)</h3>
+      <div id="extraPresetList"></div>
+      <button class="btn small secondary" onclick="addExtraPreset()">＋金額を追加</button>
+    </div>
+
+    <div class="settings-group">
+      <h3>運搬費(プルダウン金額)</h3>
+      <div id="carryFeePresetList"></div>
+      <button class="btn small secondary" onclick="addCarryFeePreset()">＋金額を追加</button>
+    </div>
+
+    <div class="settings-group">
+      <h3>草刈り単価</h3>
+      <div class="row">
+        <div><label>機械刈り(円 / ㎡)</label><input type="number" id="s_grassMachine"></div>
+        <div><label>刈払機(円 / ㎡)</label><input type="number" id="s_grassTrimmer"></div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h3>薬剤散布単価</h3>
+      <div class="row">
+        <div><label>通常単価(円 / 本)</label><input type="number" id="s_pestPrice"></div>
+        <div><label>まとめ対象(本数以上)</label><input type="number" id="s_pestThreshold"></div>
+        <div><label>まとめ単価(円 / 本)</label><input type="number" id="s_pestBulkPrice"></div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h3>交通費の初期値</h3>
+      <label>交通費(円・税なし)</label>
+      <input type="number" id="s_transport">
+    </div>
+
+    <div class="settings-group">
+      <h3>見積書に表示する自社情報</h3>
+      <input type="text" id="s_companyName" placeholder="屋号・会社名">
+      <input type="text" id="s_companyInfo" placeholder="住所・電話番号など" style="margin-top:6px;">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="saveSettings()">保存して閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="status-msg" id="statusMsg"></div>
+
+<!-- 印刷用エリア -->
+<div id="printArea"></div>
+
+<script>
+/* ===== 初期設定・状態管理 ===== */
+const SETTINGS_KEY = 'arborist_settings_v1';
+const AUTOSAVE_KEY = 'arborist_autosave_v1';
+
+function defaultSettings(){
+  return {
+    laborRoles: [
+      {id: uid(), name:'クライマー', price:35000},
+      {id: uid(), name:'グランドワーカー', price:30000},
+      {id: uid(), name:'作業員', price:20000}
+    ],
+    disposalPresets: [
+      {id: uid(), label:'小', price:3000},
+      {id: uid(), label:'中', price:5000},
+      {id: uid(), label:'大', price:8000},
+      {id: uid(), label:'特大', price:10000}
+    ],
+    woodDensity: 0.8,
+    disposalPricePerKg: 25,
+    machinePresets: [
+      {id: uid(), label:'小型', price:3000},
+      {id: uid(), label:'中型', price:5000},
+      {id: uid(), label:'チッパー', price:10000}
+    ],
+    extraPresets: [
+      {id: uid(), label:'クライミングギア損料', price:5000},
+      {id: uid(), label:'リギングギア損料', price:5000},
+      {id: uid(), label:'レンタル料', price:20000}
+    ],
+    carryFeePresets: [
+      {id: uid(), label:'軽作業', price:5000},
+      {id: uid(), label:'標準', price:10000},
+      {id: uid(), label:'手間あり(段差・狭小など)', price:15000},
+      {id: uid(), label:'重労働(長距離・階段等)', price:20000}
+    ],
+    grassMachine: 50,
+    grassTrimmer: 100,
+    pestPrice: 500,
+    pestThreshold: 20,
+    pestBulkPrice: 350,
+    transportDefault: 2000,
+    companyName: '',
+    companyInfo: ''
+  };
+}
+
+let settings = loadSettings();
+let items = [];
+
+function uid(){
+  return 'id' + Math.random().toString(36).slice(2,10);
+}
+
+function loadSettings(){
+  const raw = localStorage.getItem(SETTINGS_KEY);
+  if(!raw) return defaultSettings();
+  try{
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultSettings(), parsed);
+  }catch(e){
+    return defaultSettings();
+  }
+}
+
+function persistSettings(){
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+/* ===== 金額フォーマット ===== */
+function yen(n){
+  n = Math.round(n || 0);
+  return n.toLocaleString('ja-JP') + '円';
+}
+
+/* ===== 見積項目の追加 ===== */
+function addTreeItem(){
+  const role = settings.laborRoles[0] || {id:'', name:'', price:0};
+  items.push({
+    id: uid(), type:'tree',
+    work:'伐採',
+    labors: [ {id: uid(), roleId: role.id, count: 1} ],
+    diameter: 30,
+    length: 3,
+    machines: [],
+    extras: [],
+    carryFeePresetId: (settings.carryFeePresets[0]||{}).id || '',
+    other: 0,
+    taxed: true
+  });
+  render();
+}
+function addGardenItem(){
+  const role = settings.laborRoles[0] || {id:'', name:'', price:0};
+  items.push({
+    id: uid(), type:'garden',
+    labors: [ {id: uid(), roleId: role.id, count: 1} ],
+    presetId: (settings.disposalPresets[0]||{}).id || '',
+    machines: [],
+    extras: [],
+    carryFeePresetId: (settings.carryFeePresets[0]||{}).id || '',
+    other: 0,
+    taxed: true
+  });
+  render();
+}
+function addLabor(itemId){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  const role = settings.laborRoles[0] || {id:'', name:'', price:0};
+  it.labors.push({id: uid(), roleId: role.id, count: 1});
+  render();
+}
+function removeLabor(itemId, laborId){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  it.labors = it.labors.filter(l=>l.id!==laborId);
+  render();
+}
+function updateLabor(itemId, laborId, field, value){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  const l = it.labors.find(l=>l.id===laborId);
+  if(!l) return;
+  l[field] = value;
+  render();
+}
+function addMachine(itemId){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  const preset = settings.machinePresets[0] || {id:'', label:'', price:0};
+  it.machines.push({id: uid(), presetId: preset.id, days: 1});
+  render();
+}
+function removeMachine(itemId, machineId){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  it.machines = it.machines.filter(m=>m.id!==machineId);
+  render();
+}
+function updateMachine(itemId, machineId, field, value){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  const m = it.machines.find(m=>m.id===machineId);
+  if(!m) return;
+  m[field] = value;
+  render();
+}
+function addExtra(itemId){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  const preset = settings.extraPresets[0] || {id:'', label:'', price:0};
+  it.extras.push({id: uid(), presetId: preset.id, qty: 1});
+  render();
+}
+function removeExtra(itemId, extraId){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  it.extras = it.extras.filter(e=>e.id!==extraId);
+  render();
+}
+function updateExtra(itemId, extraId, field, value){
+  const it = items.find(i=>i.id===itemId);
+  if(!it) return;
+  const e = it.extras.find(e=>e.id===extraId);
+  if(!e) return;
+  e[field] = value;
+  render();
+}
+function addGrassItem(){
+  items.push({
+    id: uid(), type:'grass',
+    method:'machine',
+    area: 100,
+    unitPrice: settings.grassMachine,
+    taxed: true
+  });
+  render();
+}
+function addPesticideItem(){
+  items.push({
+    id: uid(), type:'pesticide',
+    count: 10,
+    taxed: true
+  });
+  render();
+}
+function addTransportItem(){
+  items.push({
+    id: uid(), type:'transport',
+    amount: settings.transportDefault,
+    taxed: false
+  });
+  render();
+}
+function addOtherItem(){
+  items.push({
+    id: uid(), type:'other',
+    label:'', amount:0, taxed:true
+  });
+  render();
+}
+
+function removeItem(id){
+  items = items.filter(it=>it.id!==id);
+  render();
+}
+
+/* ===== 各項目の金額計算 ===== */
+function treeDisposalVolume(it){
+  const r = (parseFloat(it.diameter)||0)/100/2;
+  const len = parseFloat(it.length)||0;
+  return Math.PI * r * r * len; // m3
+}
+function treeDisposalWeight(it){
+  return treeDisposalVolume(it) * settings.woodDensity * 1000; // kg
+}
+function treeDisposalRawAmount(it){
+  return treeDisposalWeight(it) * settings.disposalPricePerKg;
+}
+const TREE_DISPOSAL_BASE_TIERS = [3000, 5000, 8000, 10000];
+function ceilToDisposalTier(amount){
+  for(const t of TREE_DISPOSAL_BASE_TIERS){
+    if(amount <= t) return t;
+  }
+  return Math.ceil(amount/5000)*5000;
+}
+function treeDisposalAmount(it){
+  return ceilToDisposalTier(treeDisposalRawAmount(it));
+}
+function gardenDisposalAmount(it){
+  const p = settings.disposalPresets.find(p=>p.id===it.presetId);
+  return p ? p.price : 0;
+}
+function carryFeeAmount(it){
+  const p = settings.carryFeePresets.find(p=>p.id===it.carryFeePresetId);
+  return p ? p.price : 0;
+}
+function laborAmount(it){
+  return (it.labors||[]).reduce((sum,l)=>{
+    const role = settings.laborRoles.find(r=>r.id===l.roleId);
+    const price = role ? role.price : 0;
+    return sum + price * (parseFloat(l.count)||0);
+  }, 0);
+}
+function machinesAmount(it){
+  return (it.machines||[]).reduce((sum,m)=>{
+    const p = settings.machinePresets.find(p=>p.id===m.presetId);
+    const price = p ? p.price : 0;
+    return sum + price * (parseFloat(m.days)||0);
+  }, 0);
+}
+function extrasAmount(it){
+  return (it.extras||[]).reduce((sum,e)=>{
+    const p = settings.extraPresets.find(p=>p.id===e.presetId);
+    const price = p ? p.price : 0;
+    return sum + price * (parseFloat(e.qty)||0);
+  }, 0);
+}
+function itemAmount(it){
+  if(it.type==='tree'){
+    return laborAmount(it) + treeDisposalAmount(it) + machinesAmount(it) + extrasAmount(it) + carryFeeAmount(it) + (parseFloat(it.other)||0);
+  }
+  if(it.type==='garden'){
+    return laborAmount(it) + gardenDisposalAmount(it) + machinesAmount(it) + extrasAmount(it) + carryFeeAmount(it) + (parseFloat(it.other)||0);
+  }
+  if(it.type==='grass'){
+    return (parseFloat(it.area)||0) * (parseFloat(it.unitPrice)||0);
+  }
+  if(it.type==='pesticide'){
+    const count = parseFloat(it.count)||0;
+    const unit = count >= settings.pestThreshold ? settings.pestBulkPrice : settings.pestPrice;
+    return count * unit;
+  }
+  if(it.type==='transport'){
+    return parseFloat(it.amount)||0;
+  }
+  if(it.type==='other'){
+    return parseFloat(it.amount)||0;
+  }
+  return 0;
+}
+
+function itemLabel(it){
+  if(it.type==='tree') return '樹木作業:' + it.work;
+  if(it.type==='garden') return 'お庭';
+  if(it.type==='grass') return '草刈り';
+  if(it.type==='pesticide') return '薬剤散布';
+  if(it.type==='transport') return '交通費';
+  if(it.type==='other') return 'その他';
+  return '';
+}
+
+/* ===== 描画 ===== */
+function render(){
+  renderItems();
+  renderTotals();
+  autosave();
+}
+
+function roleOptions(selectedId){
+  return settings.laborRoles.map(r=>
+    `<option value="${r.id}" ${r.id===selectedId?'selected':''}>${escapeHtml(r.name)}(${yen(r.price)})</option>`
+  ).join('');
+}
+function presetOptions(selectedId){
+  return settings.disposalPresets.map(p=>
+    `<option value="${p.id}" ${p.id===selectedId?'selected':''}>${escapeHtml(p.label)}(${yen(p.price)})</option>`
+  ).join('');
+}
+function carryFeePresetOptions(selectedId){
+  return settings.carryFeePresets.map(p=>
+    `<option value="${p.id}" ${p.id===selectedId?'selected':''}>${escapeHtml(p.label)}(${yen(p.price)})</option>`
+  ).join('');
+}
+function escapeHtml(s){
+  return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderItems(){
+  const c = document.getElementById('itemsContainer');
+  if(items.length===0){
+    c.innerHTML = '<p class="note">上のボタンから項目を追加してください。</p>';
+    return;
+  }
+  c.innerHTML = items.map(it=>renderItemCard(it)).join('');
+}
+
+function laborsHtmlFor(it){
+  return (it.labors||[]).map(l=>`
+    <div class="row" style="align-items:flex-end">
+      <div>
+        <label>役割</label>
+        <select onchange="updateLabor('${it.id}','${l.id}','roleId',this.value)">
+          ${roleOptions(l.roleId)}
+        </select>
+      </div>
+      <div>
+        <label>人数(人工)</label>
+        <input type="number" step="0.5" value="${l.count}" onchange="updateLabor('${it.id}','${l.id}','count',this.value)">
+      </div>
+      <div style="flex:0 0 auto">
+        <button class="btn small danger no-print" onclick="removeLabor('${it.id}','${l.id}')">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+function machinesHtmlFor(it){
+  return (it.machines||[]).map(m=>`
+    <div class="row" style="align-items:flex-end">
+      <div>
+        <label>機械</label>
+        <select onchange="updateMachine('${it.id}','${m.id}','presetId',this.value)">
+          ${settings.machinePresets.map(p=>`<option value="${p.id}" ${p.id===m.presetId?'selected':''}>${escapeHtml(p.label)}(${yen(p.price)}/日)</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label>日数</label>
+        <input type="number" step="0.5" value="${m.days}" onchange="updateMachine('${it.id}','${m.id}','days',this.value)">
+      </div>
+      <div style="flex:0 0 auto">
+        <button class="btn small danger no-print" onclick="removeMachine('${it.id}','${m.id}')">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+function extrasHtmlFor(it){
+  return (it.extras||[]).map(e=>`
+    <div class="row" style="align-items:flex-end">
+      <div>
+        <label>追加項目</label>
+        <select onchange="updateExtra('${it.id}','${e.id}','presetId',this.value)">
+          ${settings.extraPresets.map(p=>`<option value="${p.id}" ${p.id===e.presetId?'selected':''}>${escapeHtml(p.label)}(${yen(p.price)})</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label>数量</label>
+        <input type="number" step="1" value="${e.qty}" onchange="updateExtra('${it.id}','${e.id}','qty',this.value)">
+      </div>
+      <div style="flex:0 0 auto">
+        <button class="btn small danger no-print" onclick="removeExtra('${it.id}','${e.id}')">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderItemCard(it){
+  const amount = itemAmount(it);
+  let body = '';
+
+  if(it.type==='tree'){
+    body = `
+      <div class="row">
+        <div>
+          <label>作業内容</label>
+          <select onchange="updateItem('${it.id}','work',this.value)">
+            ${['伐採','剪定','伐根'].map(w=>`<option ${w===it.work?'selected':''}>${w}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <label>人工(役割ごとに追加できます)</label>
+      ${laborsHtmlFor(it)}
+      <div class="btn-row no-print" style="margin-top:0">
+        <button class="btn small secondary" onclick="addLabor('${it.id}')">＋人工を追加</button>
+      </div>
+      <p class="note">人工代 小計: ${yen(laborAmount(it))}</p>
+
+      <div class="row">
+        <div>
+          <label>幹の直径(cm)</label>
+          <input type="number" value="${it.diameter}" onchange="updateItem('${it.id}','diameter',this.value)">
+        </div>
+        <div>
+          <label>長さ(m)</label>
+          <input type="number" value="${it.length}" onchange="updateItem('${it.id}','length',this.value)">
+        </div>
+      </div>
+      <p class="note">材積 約${treeDisposalVolume(it).toFixed(3)}m3 × 比重${settings.woodDensity} × 1000 = 約${Math.round(treeDisposalWeight(it)).toLocaleString('ja-JP')}kg × ${settings.disposalPricePerKg}円/kg = 計算上 約${yen(treeDisposalRawAmount(it))} → 処分費(丸め) ${yen(treeDisposalAmount(it))}</p>
+
+      <label>機械損料(複数追加できます)</label>
+      ${machinesHtmlFor(it)}
+      <div class="btn-row no-print" style="margin-top:0">
+        <button class="btn small secondary" onclick="addMachine('${it.id}')">＋機械損料を追加</button>
+      </div>
+      <p class="note">機械損料 小計: ${yen(machinesAmount(it))}</p>
+
+      <label>追加項目(ギア損料・レンタル料など)</label>
+      ${extrasHtmlFor(it)}
+      <div class="btn-row no-print" style="margin-top:0">
+        <button class="btn small secondary" onclick="addExtra('${it.id}')">＋追加項目を追加</button>
+      </div>
+      <p class="note">追加項目 小計: ${yen(extrasAmount(it))}</p>
+
+      <div class="row">
+        <div>
+          <label>運搬費</label>
+          <select onchange="updateItem('${it.id}','carryFeePresetId',this.value)">
+            ${carryFeePresetOptions(it.carryFeePresetId)}
+          </select>
+        </div>
+        <div>
+          <label>その他(円)</label>
+          <input type="number" value="${it.other}" onchange="updateItem('${it.id}','other',this.value)">
+        </div>
+      </div>
+    `;
+  }
+
+  if(it.type==='garden'){
+    body = `
+      <label>人工(役割ごとに追加できます)</label>
+      ${laborsHtmlFor(it)}
+      <div class="btn-row no-print" style="margin-top:0">
+        <button class="btn small secondary" onclick="addLabor('${it.id}')">＋人工を追加</button>
+      </div>
+      <p class="note">人工代 小計: ${yen(laborAmount(it))}</p>
+
+      <div class="row">
+        <div>
+          <label>処分費</label>
+          <select onchange="updateItem('${it.id}','presetId',this.value)">
+            ${presetOptions(it.presetId)}
+          </select>
+        </div>
+      </div>
+
+      <label>機械損料(複数追加できます)</label>
+      ${machinesHtmlFor(it)}
+      <div class="btn-row no-print" style="margin-top:0">
+        <button class="btn small secondary" onclick="addMachine('${it.id}')">＋機械損料を追加</button>
+      </div>
+      <p class="note">機械損料 小計: ${yen(machinesAmount(it))}</p>
+
+      <label>追加項目(ギア損料・レンタル料など)</label>
+      ${extrasHtmlFor(it)}
+      <div class="btn-row no-print" style="margin-top:0">
+        <button class="btn small secondary" onclick="addExtra('${it.id}')">＋追加項目を追加</button>
+      </div>
+      <p class="note">追加項目 小計: ${yen(extrasAmount(it))}</p>
+
+      <div class="row">
+        <div>
+          <label>運搬費</label>
+          <select onchange="updateItem('${it.id}','carryFeePresetId',this.value)">
+            ${carryFeePresetOptions(it.carryFeePresetId)}
+          </select>
+        </div>
+        <div>
+          <label>その他(円)</label>
+          <input type="number" value="${it.other}" onchange="updateItem('${it.id}','other',this.value)">
+        </div>
+      </div>
+    `;
+  }
+
+  if(it.type==='grass'){
+    body = `
+      <div class="row">
+        <div>
+          <label>種別</label>
+          <select onchange="updateItem('${it.id}','method',this.value); autoFillGrassPrice('${it.id}')">
+            <option value="machine" ${it.method==='machine'?'selected':''}>機械刈り(広い面積)</option>
+            <option value="trimmer" ${it.method==='trimmer'?'selected':''}>刈払機(家周辺など)</option>
+          </select>
+        </div>
+        <div>
+          <label>面積(㎡)</label>
+          <input type="number" value="${it.area}" onchange="updateItem('${it.id}','area',this.value)">
+        </div>
+        <div>
+          <label>単価(円/㎡)</label>
+          <input type="number" value="${it.unitPrice}" onchange="updateItem('${it.id}','unitPrice',this.value)">
+        </div>
+      </div>
+    `;
+  }
+
+  if(it.type==='pesticide'){
+    const count = parseFloat(it.count)||0;
+    const bulk = count >= settings.pestThreshold;
+    body = `
+      <div class="row">
+        <div>
+          <label>本数</label>
+          <input type="number" value="${it.count}" onchange="updateItem('${it.id}','count',this.value)">
+        </div>
+        <div>
+          <label>適用単価</label>
+          <input type="text" disabled value="${bulk? 'まとめ単価 '+yen(settings.pestBulkPrice) : '通常単価 '+yen(settings.pestPrice)}">
+        </div>
+      </div>
+      <p class="note">${settings.pestThreshold}本以上でまとめ単価が自動適用されます(単価設定で変更可)。</p>
+    `;
+  }
+
+  if(it.type==='transport'){
+    body = `
+      <div class="row">
+        <div>
+          <label>交通費(円)</label>
+          <input type="number" value="${it.amount}" onchange="updateItem('${it.id}','amount',this.value)">
+        </div>
+      </div>
+      <p class="note">交通費は消費税の対象外として計算します。</p>
+    `;
+  }
+
+  if(it.type==='other'){
+    body = `
+      <div class="row">
+        <div>
+          <label>品名・内容</label>
+          <input type="text" value="${escapeHtml(it.label)}" onchange="updateItem('${it.id}','label',this.value)">
+        </div>
+        <div>
+          <label>金額(円)</label>
+          <input type="number" value="${it.amount}" onchange="updateItem('${it.id}','amount',this.value)">
+        </div>
+      </div>
+    `;
+  }
+
+  const taxRow = it.type==='transport'
+    ? `<div class="taxflag"><input type="checkbox" disabled> 非課税(交通費)</div>`
+    : `<div class="taxflag"><input type="checkbox" ${it.taxed?'checked':''} onchange="updateItem('${it.id}','taxed',this.checked)"> 消費税10%の対象</div>`;
+
+  return `
+    <div class="item-card ${it.type}">
+      <div class="item-head">
+        <span class="tag">${itemLabel(it)}</span>
+        <button class="btn small danger no-print" onclick="removeItem('${it.id}')">削除</button>
+      </div>
+      ${body}
+      ${taxRow}
+      <div class="item-subtotal">小計: ${yen(amount)}</div>
+    </div>
+  `;
+}
+
+function autoFillGrassPrice(id){
+  const it = items.find(i=>i.id===id);
+  if(!it) return;
+  it.unitPrice = it.method==='machine' ? settings.grassMachine : settings.grassTrimmer;
+  render();
+}
+
+function updateItem(id, field, value){
+  const it = items.find(i=>i.id===id);
+  if(!it) return;
+  if(field==='taxed'){
+    it[field]=value;
+  } else {
+    it[field]=value;
+  }
+  render();
+}
+
+function renderTotals(){
+  let taxable=0, nontax=0;
+  items.forEach(it=>{
+    const amt = itemAmount(it);
+    if(it.type==='transport' || !it.taxed){
+      nontax += amt;
+    } else {
+      taxable += amt;
+    }
+  });
+  const tax = taxable * 0.10;
+  document.getElementById('taxableSubtotal').textContent = yen(taxable);
+  document.getElementById('taxAmount').textContent = yen(tax);
+  document.getElementById('nontaxSubtotal').textContent = yen(nontax);
+  document.getElementById('grandTotal').textContent = yen(taxable + tax + nontax);
+}
+
+/* ===== 設定モーダル ===== */
+function openSettings(){
+  document.getElementById('roleList').innerHTML = settings.laborRoles.map(r=>`
+    <div class="role-row">
+      <input type="text" value="${escapeHtml(r.name)}" onchange="setRoleField('${r.id}','name',this.value)" placeholder="役割名">
+      <input type="number" value="${r.price}" onchange="setRoleField('${r.id}','price',this.value)" placeholder="円/人工">
+      <button class="btn small danger" onclick="removeRole('${r.id}')">削除</button>
+    </div>
+  `).join('');
+
+  document.getElementById('presetList').innerHTML = settings.disposalPresets.map(p=>`
+    <div class="preset-row">
+      <input type="text" value="${escapeHtml(p.label)}" onchange="setPresetField('${p.id}','label',this.value)" placeholder="名称">
+      <input type="number" value="${p.price}" onchange="setPresetField('${p.id}','price',this.value)" placeholder="円">
+      <button class="btn small danger" onclick="removePreset('${p.id}')">削除</button>
+    </div>
+  `).join('');
+
+  document.getElementById('machinePresetList').innerHTML = settings.machinePresets.map(p=>`
+    <div class="preset-row">
+      <input type="text" value="${escapeHtml(p.label)}" onchange="setMachinePresetField('${p.id}','label',this.value)" placeholder="名称">
+      <input type="number" value="${p.price}" onchange="setMachinePresetField('${p.id}','price',this.value)" placeholder="円/日">
+      <button class="btn small danger" onclick="removeMachinePreset('${p.id}')">削除</button>
+    </div>
+  `).join('');
+
+  document.getElementById('extraPresetList').innerHTML = settings.extraPresets.map(p=>`
+    <div class="preset-row">
+      <input type="text" value="${escapeHtml(p.label)}" onchange="setExtraPresetField('${p.id}','label',this.value)" placeholder="名称">
+      <input type="number" value="${p.price}" onchange="setExtraPresetField('${p.id}','price',this.value)" placeholder="円">
+      <button class="btn small danger" onclick="removeExtraPreset('${p.id}')">削除</button>
+    </div>
+  `).join('');
+
+  document.getElementById('carryFeePresetList').innerHTML = settings.carryFeePresets.map(p=>`
+    <div class="preset-row">
+      <input type="text" value="${escapeHtml(p.label)}" onchange="setCarryFeePresetField('${p.id}','label',this.value)" placeholder="名称">
+      <input type="number" value="${p.price}" onchange="setCarryFeePresetField('${p.id}','price',this.value)" placeholder="円">
+      <button class="btn small danger" onclick="removeCarryFeePreset('${p.id}')">削除</button>
+    </div>
+  `).join('');
+
+  document.getElementById('s_density').value = settings.woodDensity;
+  document.getElementById('s_pricePerKg').value = settings.disposalPricePerKg;
+  document.getElementById('s_grassMachine').value = settings.grassMachine;
+  document.getElementById('s_grassTrimmer').value = settings.grassTrimmer;
+  document.getElementById('s_pestPrice').value = settings.pestPrice;
+  document.getElementById('s_pestThreshold').value = settings.pestThreshold;
+  document.getElementById('s_pestBulkPrice').value = settings.pestBulkPrice;
+  document.getElementById('s_transport').value = settings.transportDefault;
+  document.getElementById('s_companyName').value = settings.companyName;
+  document.getElementById('s_companyInfo').value = settings.companyInfo;
+
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeSettings(){
+  document.getElementById('settingsModal').classList.remove('open');
+}
+function setRoleField(id, field, value){
+  const r = settings.laborRoles.find(r=>r.id===id);
+  if(!r) return;
+  r[field] = field==='price' ? (parseFloat(value)||0) : value;
+}
+function addRole(){
+  settings.laborRoles.push({id:uid(), name:'新しい役割', price:0});
+  openSettings();
+}
+function removeRole(id){
+  settings.laborRoles = settings.laborRoles.filter(r=>r.id!==id);
+  openSettings();
+}
+function setPresetField(id, field, value){
+  const p = settings.disposalPresets.find(p=>p.id===id);
+  if(!p) return;
+  p[field] = field==='price' ? (parseFloat(value)||0) : value;
+}
+function addPreset(){
+  settings.disposalPresets.push({id:uid(), label:'新規', price:0});
+  openSettings();
+}
+function removePreset(id){
+  settings.disposalPresets = settings.disposalPresets.filter(p=>p.id!==id);
+  openSettings();
+}
+function setMachinePresetField(id, field, value){
+  const p = settings.machinePresets.find(p=>p.id===id);
+  if(!p) return;
+  p[field] = field==='price' ? (parseFloat(value)||0) : value;
+}
+function addMachinePreset(){
+  settings.machinePresets.push({id:uid(), label:'新規', price:0});
+  openSettings();
+}
+function removeMachinePreset(id){
+  settings.machinePresets = settings.machinePresets.filter(p=>p.id!==id);
+  openSettings();
+}
+function setExtraPresetField(id, field, value){
+  const p = settings.extraPresets.find(p=>p.id===id);
+  if(!p) return;
+  p[field] = field==='price' ? (parseFloat(value)||0) : value;
+}
+function addExtraPreset(){
+  settings.extraPresets.push({id:uid(), label:'新規', price:0});
+  openSettings();
+}
+function removeExtraPreset(id){
+  settings.extraPresets = settings.extraPresets.filter(p=>p.id!==id);
+  openSettings();
+}
+function setCarryFeePresetField(id, field, value){
+  const p = settings.carryFeePresets.find(p=>p.id===id);
+  if(!p) return;
+  p[field] = field==='price' ? (parseFloat(value)||0) : value;
+}
+function addCarryFeePreset(){
+  settings.carryFeePresets.push({id:uid(), label:'新規', price:0});
+  openSettings();
+}
+function removeCarryFeePreset(id){
+  settings.carryFeePresets = settings.carryFeePresets.filter(p=>p.id!==id);
+  openSettings();
+}
+
+function saveSettings(){
+  settings.woodDensity = parseFloat(document.getElementById('s_density').value)||0;
+  settings.disposalPricePerKg = parseFloat(document.getElementById('s_pricePerKg').value)||0;
+  settings.grassMachine = parseFloat(document.getElementById('s_grassMachine').value)||0;
+  settings.grassTrimmer = parseFloat(document.getElementById('s_grassTrimmer').value)||0;
+  settings.pestPrice = parseFloat(document.getElementById('s_pestPrice').value)||0;
+  settings.pestThreshold = parseFloat(document.getElementById('s_pestThreshold').value)||0;
+  settings.pestBulkPrice = parseFloat(document.getElementById('s_pestBulkPrice').value)||0;
+  settings.transportDefault = parseFloat(document.getElementById('s_transport').value)||0;
+  settings.companyName = document.getElementById('s_companyName').value;
+  settings.companyInfo = document.getElementById('s_companyInfo').value;
+  persistSettings();
+  closeSettings();
+  render();
+  showStatus('単価設定を保存しました');
+}
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+
+/* ===== 印刷 ===== */
+function itemPrintDetailLines(it){
+  const lines = [];
+  if(it.type==='tree'){
+    lines.push(it.work);
+    (it.labors||[]).forEach(l=>{
+      const role = settings.laborRoles.find(r=>r.id===l.roleId);
+      if(role) lines.push(`人工: ${role.name} ${l.count}人工 ${yen(role.price*(parseFloat(l.count)||0))}`);
+    });
+    lines.push(`処分費 ${yen(treeDisposalAmount(it))}`);
+    (it.machines||[]).forEach(m=>{
+      const p = settings.machinePresets.find(p=>p.id===m.presetId);
+      if(p) lines.push(`機械: ${p.label} ${m.days}日 ${yen(p.price*(parseFloat(m.days)||0))}`);
+    });
+    (it.extras||[]).forEach(e=>{
+      const p = settings.extraPresets.find(p=>p.id===e.presetId);
+      if(p) lines.push(`${p.label} ${e.qty} ${yen(p.price*(parseFloat(e.qty)||0))}`);
+    });
+    const cf = settings.carryFeePresets.find(p=>p.id===it.carryFeePresetId);
+    if(cf) lines.push(`運搬費: ${cf.label} ${yen(cf.price)}`);
+    if(parseFloat(it.other)) lines.push(`その他 ${yen(parseFloat(it.other))}`);
+  }
+  if(it.type==='garden'){
+    (it.labors||[]).forEach(l=>{
+      const role = settings.laborRoles.find(r=>r.id===l.roleId);
+      if(role) lines.push(`人工: ${role.name} ${l.count}人工 ${yen(role.price*(parseFloat(l.count)||0))}`);
+    });
+    const preset = settings.disposalPresets.find(p=>p.id===it.presetId);
+    if(preset) lines.push(`処分費: ${preset.label} ${yen(preset.price)}`);
+    (it.machines||[]).forEach(m=>{
+      const p = settings.machinePresets.find(p=>p.id===m.presetId);
+      if(p) lines.push(`機械: ${p.label} ${m.days}日 ${yen(p.price*(parseFloat(m.days)||0))}`);
+    });
+    (it.extras||[]).forEach(e=>{
+      const p = settings.extraPresets.find(p=>p.id===e.presetId);
+      if(p) lines.push(`${p.label} ${e.qty} ${yen(p.price*(parseFloat(e.qty)||0))}`);
+    });
+    const cf = settings.carryFeePresets.find(p=>p.id===it.carryFeePresetId);
+    if(cf) lines.push(`運搬費: ${cf.label} ${yen(cf.price)}`);
+    if(parseFloat(it.other)) lines.push(`その他 ${yen(parseFloat(it.other))}`);
+  }
+  if(it.type==='grass'){
+    lines.push((it.method==='machine'?'機械刈り':'刈払機') + ` ${it.area}㎡ × ${yen(it.unitPrice)}`);
+  }
+  if(it.type==='pesticide'){
+    const count = parseFloat(it.count)||0;
+    const bulk = count >= settings.pestThreshold;
+    lines.push(`${count}本 × ${yen(bulk?settings.pestBulkPrice:settings.pestPrice)}`);
+  }
+  if(it.type==='transport'){
+    lines.push('交通費');
+  }
+  if(it.type==='other'){
+    lines.push(it.label);
+  }
+  return lines.filter(Boolean);
+}
+
+function doPrint(){
+  const info = {
+    customerName: document.getElementById('customerName').value,
+    siteAddress: document.getElementById('siteAddress').value,
+    date: document.getElementById('estimateDate').value,
+    no: document.getElementById('estimateNo').value
+  };
+  let taxable=0, nontax=0;
+  const rows = items.map(it=>{
+    const amt = itemAmount(it);
+    if(it.type==='transport' || !it.taxed){ nontax+=amt; } else { taxable+=amt; }
+    const detail = itemPrintDetailLines(it).map(escapeHtml).join('<br>');
+    const taxLabel = (it.type==='transport' || !it.taxed) ? '非課税' : '課税';
+    return `<tr><td>${itemLabel(it)}</td><td>${detail}</td><td>${taxLabel}</td><td style="text-align:right">${yen(amt)}</td></tr>`;
+  }).join('');
+  const tax = taxable*0.10;
+  const total = taxable+tax+nontax;
+
+  document.getElementById('printArea').innerHTML = `
+    <h1>御 見 積 書</h1>
+    <div class="p-meta">
+      <div>
+        <div>${escapeHtml(info.customerName)} 様</div>
+        <div>現場: ${escapeHtml(info.siteAddress)}</div>
+      </div>
+      <div>
+        <div>見積日: ${escapeHtml(info.date)}</div>
+        <div>見積番号: ${escapeHtml(info.no)}</div>
+        <div>${escapeHtml(settings.companyName)}</div>
+        <div>${escapeHtml(settings.companyInfo)}</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>項目</th><th>内容</th><th>税区分</th><th>金額</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <table class="p-totals">
+      <tr><td>課税対象小計</td><td style="text-align:right">${yen(taxable)}</td></tr>
+      <tr><td>消費税(10%)</td><td style="text-align:right">${yen(tax)}</td></tr>
+      <tr><td>非課税小計</td><td style="text-align:right">${yen(nontax)}</td></tr>
+      <tr class="grand"><td>合計金額</td><td style="text-align:right">${yen(total)}</td></tr>
+    </table>
+  `;
+  window.print();
+}
+
+/* ===== 台帳用CSV書き出し(パソコンの台帳アプリに取り込む用) ===== */
+function summarizeItemsForLedger(){
+  return items.map(it=>{
+    if(it.type==='tree') return it.work;
+    if(it.type==='garden') return 'お庭';
+    if(it.type==='grass') return '草刈り';
+    if(it.type==='pesticide') return '薬剤散布';
+    if(it.type==='transport') return '交通費';
+    if(it.type==='other') return it.label || 'その他';
+    return '';
+  }).filter(Boolean).join('・');
+}
+function csvEscape(s){
+  s = (s===undefined||s===null) ? '' : String(s);
+  if(/[",\n]/.test(s)){
+    s = '"' + s.replace(/"/g,'""') + '"';
+  }
+  return s;
+}
+function buildLedgerCsv(){
+  const customerName = document.getElementById('customerName').value;
+  const siteAddress = document.getElementById('siteAddress').value;
+  const date = document.getElementById('estimateDate').value;
+  const no = document.getElementById('estimateNo').value;
+  let taxable=0, nontax=0;
+  items.forEach(it=>{
+    const amt = itemAmount(it);
+    if(it.type==='transport' || !it.taxed){ nontax+=amt; } else { taxable+=amt; }
+  });
+  const total = taxable + taxable*0.10 + nontax;
+  const summary = summarizeItemsForLedger();
+
+  const header = ['日付','顧客名','現場住所','見積番号','摘要','合計金額'];
+  const row = [date, customerName, siteAddress, no, summary, Math.round(total)];
+  const csv = header.map(csvEscape).join(',') + '\r\n' + row.map(csvEscape).join(',') + '\r\n';
+  const filename = (customerName || '見積') + '_' + (date || '') + '_台帳.csv';
+  return {csv, filename};
+}
+
+/* ===== 共有できる環境ではOS標準の共有シートで送り、できない場合はダウンロードする共通処理 ===== */
+async function shareOrDownload(parts, filename, mimeType, successMsg, downloadMsg){
+  if(navigator.canShare){
+    try{
+      const file = new File(parts, filename, {type: mimeType});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:filename});
+        showStatus(successMsg);
+        return;
+      }
+    }catch(err){
+      if(err && err.name === 'AbortError') return; // 共有をキャンセルした場合は何もしない
+      // 共有に失敗した場合はダウンロードにフォールバック
+    }
+  }
+
+  const blob = new Blob(parts, {type: mimeType});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus(downloadMsg);
+}
+
+async function exportLedgerCsv(){
+  const {csv, filename} = buildLedgerCsv();
+  await shareOrDownload(['﻿'+csv], filename, 'text/csv', '共有しました', '台帳用CSVを書き出しました');
+}
+
+/* ===== 自分用一括保存(データ+PDF+台帳を1タップずつ順番に実行) =====
+   ブラウザは「1回の操作で複数のダウンロード/共有/印刷を自動連続実行」を
+   不正なポップアップ等とみなしてブロックすることがあるため、
+   必ず実際のタップごとに1ステップだけ実行する。 */
+let bulkSaveStep = 0;
+function resetBulkSaveStep(){
+  bulkSaveStep = 0;
+  const btn = document.getElementById('bulkSaveBtn');
+  if(btn) btn.textContent = '自分用一括保存 ①データ保存 をタップ';
+}
+function saveAllForMyself(){
+  const btn = document.getElementById('bulkSaveBtn');
+  if(bulkSaveStep === 0){
+    saveToFile();
+    bulkSaveStep = 1;
+    if(btn) btn.textContent = '自分用一括保存 ②台帳共有 をタップ';
+  } else if(bulkSaveStep === 1){
+    exportLedgerCsv();
+    bulkSaveStep = 2;
+    if(btn) btn.textContent = '自分用一括保存 ③PDF保存 をタップ';
+  } else {
+    doPrint();
+    resetBulkSaveStep();
+    showStatus('自分用一括保存が完了しました');
+  }
+}
+
+/* ===== ファイル保存・読み込み ===== */
+async function saveToFile(){
+  const data = {
+    info: {
+      customerName: document.getElementById('customerName').value,
+      siteAddress: document.getElementById('siteAddress').value,
+      date: document.getElementById('estimateDate').value,
+      no: document.getElementById('estimateNo').value
+    },
+    items: items
+  };
+  const nameForFile = (data.info.customerName || '見積') + '_' + (data.info.date || '') + '.json';
+  await shareOrDownload([JSON.stringify(data, null, 2)], nameForFile, 'application/json', '共有しました', 'ファイルに保存しました');
+}
+
+function loadFromFile(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      document.getElementById('customerName').value = data.info.customerName || '';
+      document.getElementById('siteAddress').value = data.info.siteAddress || '';
+      document.getElementById('estimateDate').value = data.info.date || '';
+      document.getElementById('estimateNo').value = data.info.no || '';
+      items = data.items || [];
+      render();
+      resetBulkSaveStep();
+      showStatus('見積もりを読み込みました');
+    }catch(err){
+      alert('ファイルの読み込みに失敗しました');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAll(){
+  if(!confirm('現在の入力内容を消して新規作成します。よろしいですか?')) return;
+  items = [];
+  document.getElementById('customerName').value = '';
+  document.getElementById('siteAddress').value = '';
+  document.getElementById('estimateDate').value = todayStr();
+  document.getElementById('estimateNo').value = genEstimateNo();
+  render();
+  resetBulkSaveStep();
+}
+
+/* ===== 自動保存(直前の入力復元用) ===== */
+function autosave(){
+  const data = {
+    info: {
+      customerName: document.getElementById('customerName').value,
+      siteAddress: document.getElementById('siteAddress').value,
+      date: document.getElementById('estimateDate').value,
+      no: document.getElementById('estimateNo').value
+    },
+    items: items
+  };
+  localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+}
+
+function restoreAutosave(){
+  const raw = localStorage.getItem(AUTOSAVE_KEY);
+  if(!raw) return false;
+  try{
+    const data = JSON.parse(raw);
+    document.getElementById('customerName').value = data.info.customerName || '';
+    document.getElementById('siteAddress').value = data.info.siteAddress || '';
+    document.getElementById('estimateDate').value = data.info.date || todayStr();
+    document.getElementById('estimateNo').value = data.info.no || genEstimateNo();
+    items = data.items || [];
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function todayStr(){
+  const d = new Date();
+  const pad = n=>n.toString().padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function genEstimateNo(){
+  const d = new Date();
+  const pad = n=>n.toString().padStart(2,'0');
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(Math.random()*900+100)}`;
+}
+
+function showStatus(msg){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 1800);
+}
+
+/* ===== 入力欄の変更を自動保存に反映 ===== */
+['customerName','siteAddress','estimateDate','estimateNo'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', autosave);
+});
+
+/* ===== 初期化 ===== */
+(function init(){
+  const restored = restoreAutosave();
+  if(!restored){
+    document.getElementById('estimateDate').value = todayStr();
+    document.getElementById('estimateNo').value = genEstimateNo();
+  }
+  render();
+})();
+</script>
+</body>
+</html>
