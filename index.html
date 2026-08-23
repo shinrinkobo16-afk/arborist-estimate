@@ -2418,19 +2418,23 @@ function genEstimateNo(){
   return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(Math.random()*900+100)}`;
 }
 
-/* 同じ顧客・同じ日付で複数パターン(項目構成の違う見積)を作ったとき、
-   前回出力したパターンから項目内容を変えていたら見積番号を自動で採番し直す。
-   (合計金額がたまたま同じでも、台帳の重複判定で誤って弾かれないようにするため) */
-let lastExportedItemsSnapshot = null;
+/* 同じ顧客・同じ日付で複数パターン(項目構成や現場名違いの見積)を作ったとき、
+   前回出力したパターンから内容を変えていたら見積番号を自動で採番し直す。
+   台帳の重複判定(日付・顧客名・見積番号・合計金額)は現場名を見ていないため、
+   現場名だけ変えて金額が同じになるケースも見積番号を変えて区別できるようにする。 */
+let lastExportedSnapshot = null;
 function resetEstimateNoTracking(){
-  lastExportedItemsSnapshot = null;
+  lastExportedSnapshot = null;
 }
 function ensureFreshEstimateNo(){
-  const snapshot = JSON.stringify(items);
-  if(lastExportedItemsSnapshot !== null && snapshot !== lastExportedItemsSnapshot){
+  const snapshot = JSON.stringify({
+    siteAddress: document.getElementById('siteAddress').value,
+    items: items
+  });
+  if(lastExportedSnapshot !== null && snapshot !== lastExportedSnapshot){
     document.getElementById('estimateNo').value = genEstimateNo();
   }
-  lastExportedItemsSnapshot = snapshot;
+  lastExportedSnapshot = snapshot;
 }
 
 /* 同じ顧客・同じ日付で複数パターンの見積を作った際にファイル名が重複しないよう、保存の都度、時刻を付与する */
