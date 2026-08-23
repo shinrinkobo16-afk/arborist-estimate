@@ -386,9 +386,9 @@
   </div>
 
   <div class="btn-row no-print" style="margin-bottom:8px;">
-    <button class="btn accent" id="bulkSaveBtn" onclick="saveAllForMyself()">自分用一括保存 ①データ保存 をタップ</button>
+    <button class="btn accent" id="bulkSaveBtn" onclick="saveAllForMyself()">自分用一括保存</button>
   </div>
-  <p class="note no-print" style="margin-top:-4px;margin-bottom:14px;">同じボタンをあと2回タップすると②台帳共有→③PDF共有の順に進みます(ブラウザが連続保存をブロックしないよう、1タップにつき1つずつ実行します)。</p>
+  <p class="note no-print" id="bulkSaveNote" style="margin-top:-4px;margin-bottom:14px;"></p>
   <div class="btn-row no-print" style="margin-bottom:30px;">
     <button class="btn" onclick="sharePdfEstimate()">PDFを共有(お客様用)</button>
     <button class="btn secondary" onclick="doPrint()">印刷する(お客様用)</button>
@@ -2191,7 +2191,7 @@ function doPrint(){
 }
 
 /* ===== PDF共有(お客様用・画像化してCSVと同じ共有シートで送る) ===== */
-async function sharePdfEstimate(forSelf){
+async function buildEstimatePdfFile(forSelf){
   const info = renderPrintArea();
   document.body.classList.add('pdf-export');
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
@@ -2220,9 +2220,17 @@ async function sharePdfEstimate(forSelf){
 
     const blob = pdf.output('blob');
     const filename = (info.customerName || '見積') + '_' + (info.date || '') + (info.no ? '_'+info.no : '') + '_' + fileTimeStamp() + (forSelf ? '_控え' : '') + '.pdf';
-    await shareOrDownload([blob], filename, 'application/pdf', '共有しました', 'PDFを保存しました');
+    return new File([blob], filename, {type:'application/pdf'});
   }catch(e){
     document.body.classList.remove('pdf-export');
+    throw e;
+  }
+}
+async function sharePdfEstimate(forSelf){
+  try{
+    const file = await buildEstimatePdfFile(forSelf);
+    await shareOrDownload([file], file.name, 'application/pdf', '共有しました', 'PDFを保存しました');
+  }catch(e){
     alert('PDFの作成に失敗しました。もう一度お試しください。');
   }
 }
@@ -2294,22 +2302,57 @@ async function shareOrDownload(parts, filename, mimeType, successMsg, downloadMs
   showStatus(downloadMsg);
 }
 
-async function exportLedgerCsv(){
+function buildLedgerCsvFile(){
   const {csv, filename} = buildLedgerCsv();
-  await shareOrDownload(['﻿'+csv], filename, 'text/csv', '共有しました', '台帳用CSVを書き出しました');
+  return new File(['﻿'+csv], filename, {type:'text/csv'});
+}
+async function exportLedgerCsv(){
+  const file = buildLedgerCsvFile();
+  await shareOrDownload([file], file.name, 'text/csv', '共有しました', '台帳用CSVを書き出しました');
 }
 
-/* ===== 自分用一括保存(データ+PDF+台帳を1タップずつ順番に実行) =====
-   ブラウザは「1回の操作で複数のダウンロード/共有/印刷を自動連続実行」を
-   不正なポップアップ等とみなしてブロックすることがあるため、
-   必ず実際のタップごとに1ステップだけ実行する。 */
+/* ===== 自分用一括保存(データ+台帳CSV+PDF控えをまとめて保存) =====
+   端末がファイルの複数同時共有(Web Share API)に対応していれば、
+   3つのファイルを1回の共有操作でまとめて送る(1タップで完了)。
+   対応していない端末では、共有シート/ダウンロードの連続実行がブロックされる
+   ことがあるため、従来通り1タップにつき1ステップずつ順番に実行する方式に
+   フォールバックする。この判定はページ読み込み時に一度だけ行い、ボタンの
+   表示文言(resetBulkSaveStep)にも反映する。 */
+let multiFileShareSupported = false;
+try{
+  multiFileShareSupported = !!(navigator.canShare && navigator.canShare({
+    files: [new File([''], 'a.txt'), new File([''], 'b.csv'), new File([''], 'c.pdf')]
+  }));
+}catch(e){ /* 判定に失敗した端末は従来の1タップ1ステップ方式にフォールバック */ }
+
 let bulkSaveStep = 0;
 function resetBulkSaveStep(){
   bulkSaveStep = 0;
   const btn = document.getElementById('bulkSaveBtn');
-  if(btn) btn.textContent = '自分用一括保存 ①データ保存 をタップ';
+  const note = document.getElementById('bulkSaveNote');
+  if(multiFileShareSupported){
+    if(btn) btn.textContent = '自分用一括保存(1タップで完了)';
+    if(note) note.textContent = 'タップすると、データ・台帳CSV・PDF控えの3つをまとめて共有シートに渡します。';
+  }else{
+    if(btn) btn.textContent = '自分用一括保存 ①データ保存 をタップ';
+    if(note) note.textContent = '同じボタンをあと2回タップすると②台帳共有→③PDF共有の順に進みます(ブラウザが連続保存をブロックしないよう、1タップにつき1つずつ実行します)。';
+  }
 }
 async function saveAllForMyself(){
+  if(multiFileShareSupported){
+    try{
+      const dataFile = buildEstimateDataFile();
+      const csvFile = buildLedgerCsvFile();
+      const pdfFile = await buildEstimatePdfFile(true);
+      await navigator.share({files:[dataFile, csvFile, pdfFile], title:'見積データ一式'});
+      showStatus('データ・台帳・PDFをまとめて共有しました');
+    }catch(err){
+      if(!(err && err.name === 'AbortError')){
+        alert('まとめての共有に失敗しました。もう一度お試しください。');
+      }
+    }
+    return;
+  }
   const btn = document.getElementById('bulkSaveBtn');
   if(bulkSaveStep === 0){
     await saveToFile();
@@ -2327,7 +2370,8 @@ async function saveAllForMyself(){
 }
 
 /* ===== ファイル保存・読み込み ===== */
-async function saveToFile(){
+function buildEstimateDataFile(){
+  ensureFreshEstimateNo();
   const data = {
     info: {
       customerName: document.getElementById('customerName').value,
@@ -2337,8 +2381,12 @@ async function saveToFile(){
     },
     items: items
   };
-  const nameForFile = (data.info.customerName || '見積') + '_' + (data.info.date || '') + '.txt';
-  await shareOrDownload([JSON.stringify(data, null, 2)], nameForFile, 'text/plain', '共有しました', 'ファイルに保存しました');
+  const filename = (data.info.customerName || '見積') + '_' + (data.info.date || '') + (data.info.no ? '_'+data.info.no : '') + '_' + fileTimeStamp() + '.txt';
+  return new File([JSON.stringify(data, null, 2)], filename, {type:'text/plain'});
+}
+async function saveToFile(){
+  const file = buildEstimateDataFile();
+  await shareOrDownload([file], file.name, 'text/plain', '共有しました', 'ファイルに保存しました');
 }
 
 function loadFromFile(event){
@@ -2464,6 +2512,7 @@ function showStatus(msg){
     document.getElementById('estimateNo').value = genEstimateNo();
   }
   render();
+  resetBulkSaveStep();
   if(!company.companyName && !company.companyInfo){
     openCompanyModal();
   }
