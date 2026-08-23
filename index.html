@@ -2136,6 +2136,7 @@ function itemPrintRows(it){
 }
 
 function renderPrintArea(){
+  ensureFreshEstimateNo();
   const info = {
     customerName: document.getElementById('customerName').value,
     siteAddress: document.getElementById('siteAddress').value,
@@ -2218,7 +2219,7 @@ async function sharePdfEstimate(forSelf){
     }
 
     const blob = pdf.output('blob');
-    const filename = (info.customerName || '見積') + '_' + (info.date || '') + (forSelf ? '_控え' : '') + '.pdf';
+    const filename = (info.customerName || '見積') + '_' + (info.date || '') + (info.no ? '_'+info.no : '') + '_' + fileTimeStamp() + (forSelf ? '_控え' : '') + '.pdf';
     await shareOrDownload([blob], filename, 'application/pdf', '共有しました', 'PDFを保存しました');
   }catch(e){
     document.body.classList.remove('pdf-export');
@@ -2247,6 +2248,7 @@ function csvEscape(s){
   return s;
 }
 function buildLedgerCsv(){
+  ensureFreshEstimateNo();
   const customerName = document.getElementById('customerName').value;
   const siteAddress = document.getElementById('siteAddress').value;
   const date = document.getElementById('estimateDate').value;
@@ -2262,7 +2264,7 @@ function buildLedgerCsv(){
   const header = ['日付','顧客名','現場住所','見積番号','摘要','合計金額'];
   const row = [date, customerName, siteAddress, no, summary, Math.round(total)];
   const csv = header.map(csvEscape).join(',') + '\r\n' + row.map(csvEscape).join(',') + '\r\n';
-  const filename = (customerName || '見積') + '_' + (date || '') + '_台帳.csv';
+  const filename = (customerName || '見積') + '_' + (date || '') + (no ? '_'+no : '') + '_' + fileTimeStamp() + '_台帳.csv';
   return {csv, filename};
 }
 
@@ -2353,6 +2355,7 @@ function loadFromFile(event){
       items = data.items || [];
       render();
       resetBulkSaveStep();
+      resetEstimateNoTracking();
       showStatus('見積もりを読み込みました');
     }catch(err){
       alert('ファイルの読み込みに失敗しました');
@@ -2371,6 +2374,7 @@ function clearAll(){
   document.getElementById('estimateNo').value = genEstimateNo();
   render();
   resetBulkSaveStep();
+  resetEstimateNoTracking();
 }
 
 /* ===== 自動保存(直前の入力復元用) ===== */
@@ -2412,6 +2416,28 @@ function genEstimateNo(){
   const d = new Date();
   const pad = n=>n.toString().padStart(2,'0');
   return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(Math.random()*900+100)}`;
+}
+
+/* 同じ顧客・同じ日付で複数パターン(項目構成の違う見積)を作ったとき、
+   前回出力したパターンから項目内容を変えていたら見積番号を自動で採番し直す。
+   (合計金額がたまたま同じでも、台帳の重複判定で誤って弾かれないようにするため) */
+let lastExportedItemsSnapshot = null;
+function resetEstimateNoTracking(){
+  lastExportedItemsSnapshot = null;
+}
+function ensureFreshEstimateNo(){
+  const snapshot = JSON.stringify(items);
+  if(lastExportedItemsSnapshot !== null && snapshot !== lastExportedItemsSnapshot){
+    document.getElementById('estimateNo').value = genEstimateNo();
+  }
+  lastExportedItemsSnapshot = snapshot;
+}
+
+/* 同じ顧客・同じ日付で複数パターンの見積を作った際にファイル名が重複しないよう、保存の都度、時刻を付与する */
+function fileTimeStamp(){
+  const d = new Date();
+  const pad = n=>n.toString().padStart(2,'0');
+  return `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
 function showStatus(msg){
