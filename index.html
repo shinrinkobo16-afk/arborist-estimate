@@ -280,6 +280,9 @@
       font-size:13px;
       margin-bottom:10px;
     }
+    #printArea .p-meta-right{ display:flex; flex-direction:column; align-items:flex-end; }
+    #printArea .p-meta-date{ margin-right:4em; }
+    #printArea .p-meta-company{ margin-top:2em; }
     #printArea table{
       width:100%;
       border-collapse:collapse;
@@ -320,6 +323,9 @@
   }
   body.pdf-export #printArea h1{ text-align:center; font-size:22px; margin-bottom:4px; }
   body.pdf-export #printArea .p-meta{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:10px; }
+  body.pdf-export #printArea .p-meta-right{ display:flex; flex-direction:column; align-items:flex-end; }
+  body.pdf-export #printArea .p-meta-date{ margin-right:4em; }
+  body.pdf-export #printArea .p-meta-company{ margin-top:2em; }
   body.pdf-export #printArea table{ width:100%; border-collapse:collapse; font-size:13px; margin-bottom:10px; }
   body.pdf-export #printArea th, body.pdf-export #printArea td{ border:1px solid #999; padding:5px 6px; text-align:left; }
   body.pdf-export #printArea th{ background:#eee; }
@@ -2167,11 +2173,15 @@ function renderPrintArea(){
         <div>${escapeHtml(info.customerName)} 様</div>
         <div>現場: ${escapeHtml(info.siteAddress)}</div>
       </div>
-      <div>
-        <div>見積日: ${escapeHtml(info.date)}</div>
-        <div>見積番号: ${escapeHtml(info.no)}</div>
-        <div>${escapeHtml(company.companyName)}</div>
-        <div>${escapeHtml(company.companyInfo).replace(/\n/g,'<br>')}</div>
+      <div class="p-meta-right">
+        <div class="p-meta-date">
+          <div>見積日: ${escapeHtml(info.date)}</div>
+          <div>見積番号: ${escapeHtml(info.no)}</div>
+        </div>
+        <div class="p-meta-company">
+          <div>${escapeHtml(company.companyName)}</div>
+          <div>${escapeHtml(company.companyInfo).replace(/\n/g,'<br>')}</div>
+        </div>
       </div>
     </div>
     <table>
