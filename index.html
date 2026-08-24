@@ -1751,6 +1751,12 @@ function renderItemCard(it){
         <span class="tag">${itemLabel(it)}</span>
         <button class="btn small danger no-print" onclick="removeItem('${it.id}')">削除</button>
       </div>
+      <div class="row">
+        <div>
+          <label>お客様向けコメント(見積書に表示されます・木の場所や特徴など)</label>
+          <input type="text" value="${escapeHtml(it.note)}" onchange="updateItem('${it.id}','note',this.value)" placeholder="例: 南側の松">
+        </div>
+      </div>
       ${body}
       ${taxRow}
       <div class="item-subtotal">小計: ${yen(amount)}</div>
@@ -2063,14 +2069,17 @@ document.getElementById('settingsBtn').addEventListener('click', openSettings);
 
 /* ===== 印刷 ===== */
 function itemPrintLabel(it){
-  if(it.type==='tree') return it.work;
-  if(it.type==='garden') return 'お庭';
-  if(it.type==='grass') return '草刈り';
-  if(it.type==='pesticide') return '薬剤散布';
-  if(it.type==='herbicide') return '除草剤散布';
-  if(it.type==='transport') return '交通費（非課税）';
-  if(it.type==='other') return 'その他';
-  return '';
+  let base = '';
+  if(it.type==='tree') base = it.work;
+  else if(it.type==='garden') base = 'お庭';
+  else if(it.type==='grass') base = '草刈り';
+  else if(it.type==='pesticide') base = '薬剤散布';
+  else if(it.type==='herbicide') base = '除草剤散布';
+  else if(it.type==='transport') base = '交通費（非課税）';
+  else if(it.type==='other') base = 'その他';
+  let html = escapeHtml(base);
+  if(it.note) html += `<br>（${escapeHtml(it.note)}）`;
+  return html;
 }
 function itemPrintRows(it){
   const rows = [];
@@ -2156,10 +2165,10 @@ function renderPrintArea(){
     const label = itemPrintLabel(it);
     const detailRows = itemPrintRows(it);
     if(detailRows.length===0){
-      return `<tr><td>${escapeHtml(label)}</td><td></td><td></td><td style="text-align:right">${yen(amt)}</td></tr>`;
+      return `<tr><td>${label}</td><td></td><td></td><td style="text-align:right">${yen(amt)}</td></tr>`;
     }
     return detailRows.map((r,i)=>{
-      const labelCell = i===0 ? `<td rowspan="${detailRows.length}">${escapeHtml(label)}</td>` : '';
+      const labelCell = i===0 ? `<td rowspan="${detailRows.length}">${label}</td>` : '';
       return `<tr>${labelCell}<td>${escapeHtml(r.content)}</td><td>${escapeHtml(r.qty)}</td><td style="text-align:right">${yen(r.amount)}</td></tr>`;
     }).join('');
   }).join('');
