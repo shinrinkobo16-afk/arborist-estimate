@@ -2229,7 +2229,7 @@ async function buildEstimatePdfFile(forSelf){
     }
 
     const blob = pdf.output('blob');
-    const filename = (info.customerName || '見積') + '_' + (info.date || '') + (info.no ? '_'+info.no : '') + '_' + fileTimeStamp() + (forSelf ? '_控え' : '') + '.pdf';
+    const filename = (forSelf ? '控え_' : '') + (info.customerName || '見積') + '_' + (info.date || '') + (info.no ? '_'+info.no : '') + '_' + fileTimeStamp() + '.pdf';
     return new File([blob], filename, {type:'application/pdf'});
   }catch(e){
     document.body.classList.remove('pdf-export');
