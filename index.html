@@ -261,6 +261,7 @@
   #printArea{ display:none; }
 
   @media print{
+    @page { size: A4 portrait; margin: 12mm; }
     header.appbar, .no-print, .modal-overlay { display:none !important; }
     body{ background:#fff; padding:0; }
     main{ display:none; }
@@ -306,6 +307,16 @@
       font-weight:bold;
       font-size:16px;
     }
+    #printArea .p-bank, #printArea .p-note{
+      margin-top:12px;
+      font-size:13px;
+      border:1px solid #999;
+      padding:6px 8px;
+    }
+    #printArea .p-bank-title, #printArea .p-note-title{
+      font-weight:bold;
+      margin-bottom:2px;
+    }
   }
 
   /* PDF共有用: 画面外にレイアウトして画像化するための表示(印刷スタイルの複製) */
@@ -332,6 +343,8 @@
   body.pdf-export #printArea .p-totals{ width:280px; margin-left:auto; font-size:14px; }
   body.pdf-export #printArea .p-totals td{ border:none; padding:3px 4px; }
   body.pdf-export #printArea .p-totals tr.grand td{ border-top:2px solid #333; font-weight:bold; font-size:16px; }
+  body.pdf-export #printArea .p-bank, body.pdf-export #printArea .p-note{ margin-top:12px; font-size:13px; border:1px solid #999; padding:6px 8px; }
+  body.pdf-export #printArea .p-bank-title, body.pdf-export #printArea .p-note-title{ font-weight:bold; margin-bottom:2px; }
 </style>
 </head>
 <body>
@@ -403,6 +416,60 @@
     <input type="file" id="loadFileInput" accept=".json,.txt" style="display:none" onchange="loadFromFile(event)">
     <button class="btn secondary" onclick="exportLedgerCsv()">台帳用CSVを共有／保存</button>
     <button class="btn danger" onclick="clearAll()">新規作成(クリア)</button>
+  </div>
+
+  <div class="card" id="invoiceCard">
+    <h2>請求書(作業完了後・パソコン推奨)</h2>
+    <p class="note no-print">上の見積内容をそのまま使って請求書を作ります。現場で作った見積は「見積もりをファイル保存」で保存し、事務所のパソコンで「見積もりを読み込み」してからこの欄を使うと便利です。</p>
+    <div id="invoiceClosed" class="no-print">
+      <button class="btn" onclick="openInvoice()">請求書を作成する</button>
+    </div>
+    <div id="invoiceOpen" style="display:none;">
+      <div class="row">
+        <div>
+          <label>作業完了日</label>
+          <input type="date" id="invWorkDate">
+        </div>
+        <div>
+          <label>請求日</label>
+          <input type="date" id="invDate">
+        </div>
+        <div>
+          <label>請求番号</label>
+          <input type="text" id="invNo">
+        </div>
+      </div>
+
+      <div style="margin-top:6px;">
+        <label>調整項目(値引き・追加作業など)</label>
+        <div id="invAdjContainer"></div>
+        <div class="btn-row no-print">
+          <button class="btn small secondary" onclick="addInvoiceAdjustment('discount')">＋値引きを追加</button>
+          <button class="btn small secondary" onclick="addInvoiceAdjustment('add')">＋追加項目を追加</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px;">
+        <div>
+          <label>備考(請求書に表示)</label>
+          <textarea id="invNote" rows="2" placeholder="例: 追加でお庭の剪定を実施しました。"></textarea>
+        </div>
+      </div>
+
+      <table class="totals-table" style="margin-top:8px;">
+        <tr><td>課税対象 小計</td><td id="invTaxableSubtotal">0円</td></tr>
+        <tr><td>消費税(10%)</td><td id="invTaxAmount">0円</td></tr>
+        <tr><td>非課税 小計(交通費など)</td><td id="invNontaxSubtotal">0円</td></tr>
+        <tr class="grand"><td>ご請求金額</td><td id="invGrandTotal">0円</td></tr>
+      </table>
+
+      <div class="btn-row no-print" style="margin-top:10px;">
+        <button class="btn" onclick="saveInvoicePdf()">請求書PDFを保存(ダウンロード)</button>
+        <button class="btn secondary" onclick="doInvoicePrint()">請求書を印刷</button>
+        <button class="btn secondary" onclick="exportInvoiceLedgerCsv()">請求台帳用CSVを保存(ダウンロード)</button>
+      </div>
+      <p class="note no-print">保存ボタンはパソコンのダウンロードフォルダに直接保存します(共有シートを経由しません)。Googleドライブに置きたい場合は、パソコンにGoogleドライブアプリをインストールしてダウンロードフォルダやドライブのフォルダをGoogleドライブと同期させると自動でアップロードされます。</p>
+    </div>
   </div>
 
 </main>
@@ -502,9 +569,9 @@
     </div>
 
     <div class="settings-group">
-      <h3>見積書に表示する自社情報</h3>
-      <p class="note">屋号・住所・電話番号などは、情報保護のためこの単価設定とは別に保存しています(この単価設定の書き出し・読み込みには含まれません)。</p>
-      <button class="btn small secondary" onclick="openCompanyModal()">自社情報を編集</button>
+      <h3>見積書・請求書に表示する自社情報</h3>
+      <p class="note">屋号・住所・電話番号のほか、請求書用の<strong>振込先</strong>・<strong>適格請求書発行事業者登録番号(任意)</strong>もここで登録します。情報保護のためこの単価設定とは別に保存しており、この単価設定の書き出し・読み込みには含まれません。</p>
+      <button class="btn small secondary" onclick="openCompanyModal()">自社情報を編集(振込先もここ)</button>
     </div>
 
     <div class="settings-group">
@@ -528,7 +595,7 @@
   <div class="modal">
     <button class="close-x" onclick="closeCompanyModal()">×</button>
     <h2>自社情報の設定</h2>
-    <p class="note">見積書(お客様用のPDF・印刷)に表示する屋号・連絡先です。情報保護のため、この情報は単価設定とは別に、この端末のブラウザ内だけに保存されます。単価設定の書き出し・読み込みには含まれません。</p>
+    <p class="note">見積書・請求書(お客様用のPDF・印刷)に表示する屋号・連絡先・振込先です。情報保護のため、この情報は単価設定とは別に、この端末のブラウザ内だけに保存されます。単価設定の書き出し・読み込みには含まれません。振込先・登録番号は請求書にのみ表示されます(未入力なら表示されません)。</p>
     <div class="row">
       <div>
         <label>屋号・会社名</label>
@@ -541,6 +608,19 @@
         <textarea id="c_companyInfo" rows="3" placeholder="例: ○○市○○町1-2-3&#10;TEL: 000-0000-0000"></textarea>
       </div>
     </div>
+    <div class="row">
+      <div>
+        <label>振込先(請求書に表示。銀行名・支店・種別・口座番号・名義)</label>
+        <textarea id="c_bankInfo" rows="3" placeholder="例: ○○銀行 ○○支店 普通 1234567&#10;名義: ○○造園 △△△△"></textarea>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>適格請求書発行事業者登録番号(任意・登録していれば請求書に表示)</label>
+        <input type="text" id="c_invoiceRegNo" placeholder="例: T1234567890123">
+      </div>
+    </div>
+    <p class="note">振込先・登録番号も請求書(PDF・印刷)用の情報です。単価設定の書き出し・読み込みには含まれません。</p>
     <div class="btn-row">
       <button class="btn" onclick="saveCompanyInfo()">保存</button>
       <button class="btn secondary" onclick="closeCompanyModal()">あとで入力する</button>
@@ -1044,8 +1124,11 @@ function defaultSettings(){
 
 /* ===== 自社情報(単価設定とは別に保存。書き出し・読み込みの対象外) ===== */
 const COMPANY_KEY = 'arborist_company_v1';
+/* 請求書用の振込先・登録番号を後から追加したため、既に屋号等を登録済みの利用者にも
+   1回だけ自社情報モーダルを開いて新項目に気づいてもらうためのフラグ。 */
+const COMPANY_PROMPT_KEY = 'arborist_company_prompt_v2';
 function defaultCompany(){
-  return { companyName:'', companyInfo:'' };
+  return { companyName:'', companyInfo:'', bankInfo:'', invoiceRegNo:'' };
 }
 function loadCompany(){
   const raw = localStorage.getItem(COMPANY_KEY);
@@ -1071,6 +1154,12 @@ function persistCompany(){
 let settings = loadSettings();
 let company = loadCompany();
 let items = [];
+
+/* ===== 請求書(作業完了後にPCで作成。見積の items をそのまま使う) ===== */
+function defaultInvoice(){
+  return { workDate:'', invoiceDate:'', invoiceNo:'', note:'', adjustments:[] };
+}
+let invoice = defaultInvoice();
 
 function uid(){
   return 'id' + Math.random().toString(36).slice(2,10);
@@ -1407,6 +1496,7 @@ function itemLabel(it){
 function render(){
   renderItems();
   renderTotals();
+  renderInvoiceTotals();
   autosave();
 }
 
@@ -1799,6 +1889,91 @@ function renderTotals(){
   document.getElementById('grandTotal').textContent = yen(taxable + tax + nontax);
 }
 
+/* ===== 請求書の集計・表示・操作 ===== */
+function invoiceTotals(){
+  let taxable=0, nontax=0;
+  items.forEach(it=>{
+    const amt = itemAmount(it);
+    if(it.type==='transport' || !it.taxed){ nontax += amt; } else { taxable += amt; }
+  });
+  (invoice.adjustments||[]).forEach(a=>{
+    const signed = (a.kind==='discount' ? -1 : 1) * (parseFloat(a.amount)||0);
+    if(a.taxed){ taxable += signed; } else { nontax += signed; }
+  });
+  const tax = taxable * 0.10;
+  return { taxable, tax, nontax, total: taxable + tax + nontax };
+}
+
+function renderInvoiceTotals(){
+  const t = invoiceTotals();
+  document.getElementById('invTaxableSubtotal').textContent = yen(t.taxable);
+  document.getElementById('invTaxAmount').textContent = yen(t.tax);
+  document.getElementById('invNontaxSubtotal').textContent = yen(t.nontax);
+  document.getElementById('invGrandTotal').textContent = yen(t.total);
+}
+
+function renderInvoiceAdjustments(){
+  const c = document.getElementById('invAdjContainer');
+  if(!invoice.adjustments || invoice.adjustments.length===0){
+    c.innerHTML = '<p class="note">値引き・追加作業があれば下のボタンから追加してください。</p>';
+    return;
+  }
+  c.innerHTML = invoice.adjustments.map(a=>`
+    <div class="preset-row">
+      <span class="tag" style="flex:0 0 auto;font-size:12px;font-weight:bold;">${a.kind==='discount'?'値引き':'追加'}</span>
+      <input type="text" value="${escapeHtml(a.label)}" onchange="setInvoiceAdjField('${a.id}','label',this.value)" placeholder="名称">
+      <input type="number" style="flex:0 0 110px;" value="${a.amount}" onchange="setInvoiceAdjField('${a.id}','amount',this.value)" placeholder="円">
+      <label class="taxflag" style="flex:0 0 auto;margin:0;"><input type="checkbox" ${a.taxed?'checked':''} onchange="setInvoiceAdjField('${a.id}','taxed',this.checked)">課税</label>
+      <button class="btn small danger" onclick="removeInvoiceAdjustment('${a.id}')">削除</button>
+    </div>
+  `).join('');
+}
+
+function setInvoiceAdjField(id, field, value){
+  const a = (invoice.adjustments||[]).find(x=>x.id===id);
+  if(!a) return;
+  if(field==='amount'){ a.amount = parseFloat(value)||0; }
+  else if(field==='taxed'){ a.taxed = !!value; }
+  else { a[field] = value; }
+  renderInvoiceTotals();
+  autosave();
+}
+function addInvoiceAdjustment(kind){
+  invoice.adjustments = invoice.adjustments || [];
+  invoice.adjustments.push({id: uid(), kind, label: kind==='discount'?'値引き':'追加作業', amount:0, taxed:true});
+  renderInvoiceAdjustments();
+  renderInvoiceTotals();
+  autosave();
+}
+function removeInvoiceAdjustment(id){
+  invoice.adjustments = (invoice.adjustments||[]).filter(a=>a.id!==id);
+  renderInvoiceAdjustments();
+  renderInvoiceTotals();
+  autosave();
+}
+
+function invoiceHasContent(){
+  return !!(invoice.workDate || invoice.invoiceDate || invoice.invoiceNo || invoice.note ||
+    (invoice.adjustments && invoice.adjustments.length));
+}
+function renderInvoiceArea(){
+  document.getElementById('invWorkDate').value = invoice.workDate || '';
+  document.getElementById('invDate').value = invoice.invoiceDate || '';
+  document.getElementById('invNo').value = invoice.invoiceNo || '';
+  document.getElementById('invNote').value = invoice.note || '';
+  renderInvoiceAdjustments();
+  renderInvoiceTotals();
+  document.getElementById('invoiceClosed').style.display = invoiceHasContent() ? 'none' : '';
+  document.getElementById('invoiceOpen').style.display = invoiceHasContent() ? '' : 'none';
+}
+function openInvoice(){
+  if(!invoice.workDate) invoice.workDate = todayStr();
+  if(!invoice.invoiceDate) invoice.invoiceDate = todayStr();
+  if(!invoice.invoiceNo) invoice.invoiceNo = genEstimateNo();
+  renderInvoiceArea();
+  autosave();
+}
+
 /* ===== 設定モーダル ===== */
 function openSettings(){
   document.getElementById('roleList').innerHTML = settings.laborRoles.map(r=>`
@@ -1889,14 +2064,19 @@ function closeSettings(){
 function openCompanyModal(){
   document.getElementById('c_companyName').value = company.companyName;
   document.getElementById('c_companyInfo').value = company.companyInfo;
+  document.getElementById('c_bankInfo').value = company.bankInfo || '';
+  document.getElementById('c_invoiceRegNo').value = company.invoiceRegNo || '';
   document.getElementById('companyModal').classList.add('open');
 }
 function closeCompanyModal(){
   document.getElementById('companyModal').classList.remove('open');
+  localStorage.setItem(COMPANY_PROMPT_KEY, '1');
 }
 function saveCompanyInfo(){
   company.companyName = document.getElementById('c_companyName').value;
   company.companyInfo = document.getElementById('c_companyInfo').value;
+  company.bankInfo = document.getElementById('c_bankInfo').value;
+  company.invoiceRegNo = document.getElementById('c_invoiceRegNo').value;
   persistCompany();
   closeCompanyModal();
   showStatus('自社情報を保存しました');
@@ -2210,8 +2390,8 @@ function doPrint(){
 }
 
 /* ===== PDF共有(お客様用・画像化してCSVと同じ共有シートで送る) ===== */
-async function buildEstimatePdfFile(forSelf){
-  const info = renderPrintArea();
+/* #printArea を画像化してA4 PDFのBlobにする共通処理(見積書・請求書で共用) */
+async function printAreaToPdfBlob(){
   document.body.classList.add('pdf-export');
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
   try{
@@ -2219,7 +2399,7 @@ async function buildEstimatePdfFile(forSelf){
     const canvas = await html2canvas(target, {scale:2, backgroundColor:'#ffffff'});
     document.body.classList.remove('pdf-export');
 
-    const pdf = new jspdf.jsPDF({unit:'mm', format:'a4'});
+    const pdf = new jspdf.jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const imgWidth = pageWidth;
@@ -2236,14 +2416,17 @@ async function buildEstimatePdfFile(forSelf){
       pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
     }
-
-    const blob = pdf.output('blob');
-    const filename = (forSelf ? '控え_' : '') + (info.customerName || '見積') + '_' + (info.date || '') + (info.no ? '_'+info.no : '') + '_' + fileTimeStamp() + '.pdf';
-    return new File([blob], filename, {type:'application/pdf'});
+    return pdf.output('blob');
   }catch(e){
     document.body.classList.remove('pdf-export');
     throw e;
   }
+}
+async function buildEstimatePdfFile(forSelf){
+  const info = renderPrintArea();
+  const blob = await printAreaToPdfBlob();
+  const filename = (forSelf ? '控え_' : '') + (info.customerName || '見積') + '_' + (info.date || '') + (info.no ? '_'+info.no : '') + '_' + fileTimeStamp() + '.pdf';
+  return new File([blob], filename, {type:'application/pdf'});
 }
 async function sharePdfEstimate(forSelf){
   try{
@@ -2251,6 +2434,111 @@ async function sharePdfEstimate(forSelf){
     await shareOrDownload([file], file.name, 'application/pdf', '共有しました', 'PDFを保存しました');
   }catch(e){
     alert('PDFの作成に失敗しました。もう一度お試しください。');
+  }
+}
+
+/* ===== 請求書の印刷・PDF ===== */
+function renderInvoicePrintArea(){
+  const info = {
+    customerName: document.getElementById('customerName').value,
+    siteAddress: document.getElementById('siteAddress').value,
+    workDate: invoice.workDate,
+    invoiceDate: invoice.invoiceDate,
+    invoiceNo: invoice.invoiceNo
+  };
+  const rows = items.map(it=>{
+    const amt = itemAmount(it);
+    const label = itemPrintLabel(it);
+    const detailRows = itemPrintRows(it);
+    if(detailRows.length===0){
+      return `<tr><td>${label}</td><td></td><td></td><td style="text-align:right">${yen(amt)}</td></tr>`;
+    }
+    return detailRows.map((r,i)=>{
+      const labelCell = i===0 ? `<td rowspan="${detailRows.length}">${label}</td>` : '';
+      return `<tr>${labelCell}<td>${escapeHtml(r.content)}</td><td>${escapeHtml(r.qty)}</td><td style="text-align:right">${yen(r.amount)}</td></tr>`;
+    }).join('');
+  }).join('');
+  const adjRows = (invoice.adjustments||[]).map(a=>{
+    const signed = (a.kind==='discount' ? -1 : 1) * (parseFloat(a.amount)||0);
+    const name = (a.kind==='discount' ? '値引き' : '追加') + (a.label ? '：'+a.label : '');
+    const amountText = signed < 0 ? '−'+yen(Math.abs(signed)) : yen(signed);
+    return `<tr><td>${escapeHtml(name)}</td><td></td><td></td><td style="text-align:right">${amountText}</td></tr>`;
+  }).join('');
+  const t = invoiceTotals();
+  const regLine = company.invoiceRegNo ? `<div>登録番号: ${escapeHtml(company.invoiceRegNo)}</div>` : '';
+  const bankBlock = company.bankInfo
+    ? `<div class="p-bank"><div class="p-bank-title">お振込先</div><div>${escapeHtml(company.bankInfo).replace(/\n/g,'<br>')}</div></div>`
+    : '';
+  const noteBlock = invoice.note
+    ? `<div class="p-note"><div class="p-note-title">備考</div><div>${escapeHtml(invoice.note).replace(/\n/g,'<br>')}</div></div>`
+    : '';
+
+  document.getElementById('printArea').innerHTML = `
+    <h1>請 求 書</h1>
+    <div class="p-meta">
+      <div>
+        <div>${escapeHtml(info.customerName)} 様</div>
+        <div>現場: ${escapeHtml(info.siteAddress)}</div>
+      </div>
+      <div class="p-meta-right">
+        <div class="p-meta-date">
+          <div>請求日: ${escapeHtml(info.invoiceDate)}</div>
+          <div>請求番号: ${escapeHtml(info.invoiceNo)}</div>
+          <div>作業完了日: ${escapeHtml(info.workDate)}</div>
+        </div>
+        <div class="p-meta-company">
+          <div>${escapeHtml(company.companyName)}</div>
+          <div>${escapeHtml(company.companyInfo).replace(/\n/g,'<br>')}</div>
+          ${regLine}
+        </div>
+      </div>
+    </div>
+    <p style="font-size:13px;margin:0 0 8px;">下記のとおりご請求申し上げます。</p>
+    <table>
+      <thead><tr><th>項目</th><th>内容</th><th>数量</th><th>金額</th></tr></thead>
+      <tbody>${rows}${adjRows}</tbody>
+    </table>
+    <table class="p-totals">
+      <tr><td>課税対象 小計</td><td style="text-align:right">${yen(t.taxable)}</td></tr>
+      <tr><td>消費税(10%)</td><td style="text-align:right">${yen(t.tax)}</td></tr>
+      <tr><td>非課税 小計</td><td style="text-align:right">${yen(t.nontax)}</td></tr>
+      <tr class="grand"><td>ご請求金額</td><td style="text-align:right">${yen(t.total)}</td></tr>
+    </table>
+    ${bankBlock}
+    ${noteBlock}
+  `;
+  return info;
+}
+function doInvoicePrint(){
+  renderInvoicePrintArea();
+  window.print();
+}
+async function buildInvoicePdfFile(){
+  const info = renderInvoicePrintArea();
+  const blob = await printAreaToPdfBlob();
+  const filename = (info.customerName || '請求') + '_' + (info.invoiceDate || '') + (info.invoiceNo ? '_'+info.invoiceNo : '') + '_' + fileTimeStamp() + '_請求書.pdf';
+  return new File([blob], filename, {type:'application/pdf'});
+}
+/* 請求書はパソコンでの作成を想定しているため、共有シート(ドライブ等)を経由せず
+   その場でファイルをダウンロード保存する。Googleドライブ等に置きたい場合は、
+   保存先をドライブの同期フォルダにするか、ダウンロード後に移動して使う。 */
+function downloadFile(file, msg){
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showStatus(msg);
+}
+async function saveInvoicePdf(){
+  try{
+    const file = await buildInvoicePdfFile();
+    downloadFile(file, '請求書PDFを保存しました');
+  }catch(e){
+    alert('請求書PDFの作成に失敗しました。もう一度お試しください。');
   }
 }
 
@@ -2330,6 +2618,30 @@ async function exportLedgerCsv(){
   await shareOrDownload([file], file.name, 'text/csv', '共有しました', '台帳用CSVを書き出しました');
 }
 
+/* ===== 請求台帳用CSV(パソコンの台帳アプリ「請求台帳」タブに取り込む用) =====
+   ヘッダーに「請求番号」を含むことで台帳側が請求レコードとして仕分ける。
+   フォーマット変更時は ledger.html の importCsvFiles / recordKey も同時に直すこと。 */
+function buildInvoiceLedgerCsv(){
+  const customerName = document.getElementById('customerName').value;
+  const siteAddress = document.getElementById('siteAddress').value;
+  const t = invoiceTotals();
+  const summary = summarizeItemsForLedger();
+
+  const header = ['請求日','作業完了日','顧客名','現場住所','請求番号','摘要','合計金額'];
+  const row = [invoice.invoiceDate, invoice.workDate, customerName, siteAddress, invoice.invoiceNo, summary, Math.round(t.total)];
+  const csv = header.map(csvEscape).join(',') + '\r\n' + row.map(csvEscape).join(',') + '\r\n';
+  const filename = (customerName || '請求') + '_' + (invoice.invoiceDate || '') + (invoice.invoiceNo ? '_'+invoice.invoiceNo : '') + '_' + fileTimeStamp() + '_請求台帳.csv';
+  return {csv, filename};
+}
+function buildInvoiceLedgerCsvFile(){
+  const {csv, filename} = buildInvoiceLedgerCsv();
+  return new File(['﻿'+csv], filename, {type:'text/csv'});
+}
+function exportInvoiceLedgerCsv(){
+  const file = buildInvoiceLedgerCsvFile();
+  downloadFile(file, '請求台帳用CSVを保存しました');
+}
+
 /* ===== 自分用一括保存(データ+台帳CSV+PDF控えをまとめて保存) =====
    端末がファイルの複数同時共有(Web Share API)に対応していれば、
    3つのファイルを1回の共有操作でまとめて送る(1タップで完了)。
@@ -2398,7 +2710,8 @@ function buildEstimateDataFile(){
       date: document.getElementById('estimateDate').value,
       no: document.getElementById('estimateNo').value
     },
-    items: items
+    items: items,
+    invoice: invoice
   };
   const filename = (data.info.customerName || '見積') + '_' + (data.info.date || '') + (data.info.no ? '_'+data.info.no : '') + '_' + fileTimeStamp() + '.txt';
   return new File([JSON.stringify(data, null, 2)], filename, {type:'text/plain'});
@@ -2420,7 +2733,9 @@ function loadFromFile(event){
       document.getElementById('estimateDate').value = data.info.date || '';
       document.getElementById('estimateNo').value = data.info.no || '';
       items = data.items || [];
+      invoice = Object.assign(defaultInvoice(), data.invoice || {});
       render();
+      renderInvoiceArea();
       resetBulkSaveStep();
       resetEstimateNoTracking();
       showStatus('見積もりを読み込みました');
@@ -2435,11 +2750,13 @@ function loadFromFile(event){
 function clearAll(){
   if(!confirm('現在の入力内容を消して新規作成します。よろしいですか?')) return;
   items = [];
+  invoice = defaultInvoice();
   document.getElementById('customerName').value = '';
   document.getElementById('siteAddress').value = '';
   document.getElementById('estimateDate').value = todayStr();
   document.getElementById('estimateNo').value = genEstimateNo();
   render();
+  renderInvoiceArea();
   resetBulkSaveStep();
   resetEstimateNoTracking();
 }
@@ -2453,7 +2770,8 @@ function autosave(){
       date: document.getElementById('estimateDate').value,
       no: document.getElementById('estimateNo').value
     },
-    items: items
+    items: items,
+    invoice: invoice
   };
   localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
 }
@@ -2468,6 +2786,7 @@ function restoreAutosave(){
     document.getElementById('estimateDate').value = data.info.date || todayStr();
     document.getElementById('estimateNo').value = data.info.no || genEstimateNo();
     items = data.items || [];
+    invoice = Object.assign(defaultInvoice(), data.invoice || {});
     return true;
   }catch(e){
     return false;
@@ -2523,6 +2842,14 @@ function showStatus(msg){
   document.getElementById(id).addEventListener('input', autosave);
 });
 
+/* 請求書欄の変更を invoice オブジェクトと自動保存に反映 */
+[['invWorkDate','workDate'],['invDate','invoiceDate'],['invNo','invoiceNo'],['invNote','note']].forEach(([id, key])=>{
+  document.getElementById(id).addEventListener('input', ()=>{
+    invoice[key] = document.getElementById(id).value;
+    autosave();
+  });
+});
+
 /* ===== 初期化 ===== */
 (function init(){
   const restored = restoreAutosave();
@@ -2531,8 +2858,11 @@ function showStatus(msg){
     document.getElementById('estimateNo').value = genEstimateNo();
   }
   render();
+  renderInvoiceArea();
   resetBulkSaveStep();
-  if(!company.companyName && !company.companyInfo){
+  const companyEmpty = !company.companyName && !company.companyInfo;
+  const needsBankPrompt = !company.bankInfo && !localStorage.getItem(COMPANY_PROMPT_KEY);
+  if(companyEmpty || needsBankPrompt){
     openCompanyModal();
   }
 })();

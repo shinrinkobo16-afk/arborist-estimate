@@ -37,6 +37,28 @@
     box-shadow:0 2px 6px rgba(0,0,0,0.15);
   }
   header.appbar h1{ font-size:18px; margin:0; }
+  .tabs{
+    max-width:1100px;
+    margin:14px auto 0;
+    padding:0 16px;
+    display:flex;
+    gap:4px;
+  }
+  .tab-btn{
+    background:#e7ebe3;
+    color:var(--main-dark);
+    border:1px solid var(--border);
+    border-bottom:none;
+    border-radius:8px 8px 0 0;
+    padding:9px 20px;
+    font-weight:bold;
+    font-size:14px;
+  }
+  .tab-btn.active{
+    background:var(--card);
+    border-color:var(--main);
+    box-shadow:0 -2px 0 var(--main) inset;
+  }
   main{
     max-width:1100px;
     margin:0 auto;
@@ -170,7 +192,7 @@
   }
   .status-msg.show{ opacity:1; }
   @media print{
-    header.appbar, .no-print{ display:none !important; }
+    header.appbar, .tabs, .no-print{ display:none !important; }
     body{ background:#fff; padding:0; }
     main{ max-width:none; padding:0; }
   }
@@ -179,14 +201,19 @@
 <body>
 
 <header class="appbar">
-  <h1>見積台帳(パソコン用・税務調査対応)</h1>
+  <h1>台帳(パソコン用・税務調査対応)</h1>
 </header>
+
+<div class="tabs no-print">
+  <button class="tab-btn active" data-tab="estimate" onclick="switchTab('estimate')">見積台帳</button>
+  <button class="tab-btn" data-tab="invoice" onclick="switchTab('invoice')">請求台帳</button>
+</div>
 
 <main>
 
   <div class="card no-print">
-    <h2>スマホの見積もりアプリから取り込む</h2>
-    <p class="note">見積もりアプリで「台帳用CSVを書き出す」で作られたCSVファイルを選んでください。複数ファイルまとめて選択できます。同じ内容がすでに登録されている場合は重複して追加されません。</p>
+    <h2>スマホ／PCのアプリから取り込む</h2>
+    <p class="note">見積もりアプリの「台帳用CSVを共有／保存」で作ったCSV、または請求書の「請求台帳用CSVを保存」で作ったCSVを選んでください。複数ファイルまとめて選択でき、内容(見積／請求)は自動で振り分けられて対応するタブに登録されます。同じ内容がすでに登録されている場合は重複して追加されません。</p>
     <input type="file" id="csvImportInput" accept=".csv" multiple onchange="importCsvFiles(event)">
   </div>
 
@@ -212,7 +239,7 @@
   </div>
 
   <div class="card">
-    <h2>台帳一覧</h2>
+    <h2 id="ledgerTitle">見積台帳一覧</h2>
     <div class="btn-row no-print" style="margin-bottom:10px;">
       <button class="btn" onclick="openAddModal()">＋手入力で追加</button>
       <button class="btn secondary" onclick="exportCsv()">表示中の一覧をCSVで書き出す(Excel用)</button>
@@ -223,17 +250,7 @@
     </div>
     <div class="table-wrap">
       <table class="ledger">
-        <thead>
-          <tr>
-            <th data-key="date" onclick="setSort('date')">日付</th>
-            <th data-key="customer" onclick="setSort('customer')">顧客名</th>
-            <th data-key="address" onclick="setSort('address')">現場住所</th>
-            <th data-key="no" onclick="setSort('no')">見積番号</th>
-            <th data-key="summary" onclick="setSort('summary')">摘要</th>
-            <th data-key="amount" onclick="setSort('amount')">合計金額</th>
-            <th class="no-print">操作</th>
-          </tr>
-        </thead>
+        <thead></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
@@ -241,7 +258,7 @@
       <div id="countInfo">0件</div>
       <div class="total">合計: <span id="totalAmount">0円</span></div>
     </div>
-    <p class="note">このデータはこのパソコン・このブラウザの中に保存されます。税務調査に備えて、月1回程度「バックアップ保存(JSON)」でファイルとして保存しておくことをおすすめします。</p>
+    <p class="note">このデータはこのパソコン・このブラウザの中に保存されます。見積台帳・請求台帳はそれぞれ別に保存されます。税務調査に備えて、月1回程度「バックアップ保存(JSON)」でファイルとして保存しておくことをおすすめします(1つのファイルに見積・請求まとめて保存されます)。</p>
   </div>
 
 </main>
@@ -253,32 +270,38 @@
     <h2 id="editModalTitle">手入力で追加</h2>
     <div class="row">
       <div>
-        <label>日付</label>
+        <label id="e_dateLabel">日付</label>
         <input type="date" id="e_date">
       </div>
-      <div>
-        <label>顧客名</label>
-        <input type="text" id="e_customer">
+      <div id="e_workDateRow" style="display:none">
+        <label>作業完了日</label>
+        <input type="date" id="e_workDate">
       </div>
     </div>
     <div class="row">
       <div>
+        <label>顧客名</label>
+        <input type="text" id="e_customer">
+      </div>
+      <div>
         <label>現場住所</label>
         <input type="text" id="e_address">
       </div>
+    </div>
+    <div class="row">
       <div>
-        <label>見積番号</label>
+        <label id="e_noLabel">見積番号</label>
         <input type="text" id="e_no">
+      </div>
+      <div>
+        <label>合計金額(円)</label>
+        <input type="number" id="e_amount">
       </div>
     </div>
     <div class="row">
       <div>
         <label>摘要(作業内容)</label>
         <input type="text" id="e_summary">
-      </div>
-      <div>
-        <label>合計金額(円)</label>
-        <input type="number" id="e_amount">
       </div>
     </div>
     <div class="btn-row">
@@ -290,21 +313,61 @@
 <div class="status-msg" id="statusMsg"></div>
 
 <script>
-const STORAGE_KEY = 'estimate_ledger_v1';
+const ESTIMATE_KEY = 'estimate_ledger_v1';
+const INVOICE_KEY = 'invoice_ledger_v1';
+
+/* タブごとの設定。列・CSVヘッダー・日付フィールドの違いをここに集約する。
+   請求台帳CSVフォーマットを変える場合は index.html の buildInvoiceLedgerCsv も同時に直すこと。 */
+const TABS = {
+  estimate: {
+    key: ESTIMATE_KEY,
+    label: '見積台帳',
+    dateField: 'date',
+    noLabel: '見積番号',
+    columns: [
+      {key:'date', label:'日付'},
+      {key:'customer', label:'顧客名'},
+      {key:'address', label:'現場住所'},
+      {key:'no', label:'見積番号'},
+      {key:'summary', label:'摘要'},
+      {key:'amount', label:'合計金額', amount:true}
+    ],
+    csvHeader: ['日付','顧客名','現場住所','見積番号','摘要','合計金額'],
+    csvRow: r => [r.date, r.customer, r.address, r.no, r.summary, Math.round(r.amount)]
+  },
+  invoice: {
+    key: INVOICE_KEY,
+    label: '請求台帳',
+    dateField: 'invoiceDate',
+    noLabel: '請求番号',
+    columns: [
+      {key:'invoiceDate', label:'請求日'},
+      {key:'workDate', label:'作業完了日'},
+      {key:'customer', label:'顧客名'},
+      {key:'address', label:'現場住所'},
+      {key:'no', label:'請求番号'},
+      {key:'summary', label:'摘要'},
+      {key:'amount', label:'合計金額', amount:true}
+    ],
+    csvHeader: ['請求日','作業完了日','顧客名','現場住所','請求番号','摘要','合計金額'],
+    csvRow: r => [r.invoiceDate, r.workDate, r.customer, r.address, r.no, r.summary, Math.round(r.amount)]
+  }
+};
 
 function uid(){ return 'r' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 
-function loadRecords(){
-  const raw = localStorage.getItem(STORAGE_KEY);
+function loadTab(tab){
+  const raw = localStorage.getItem(TABS[tab].key);
   if(!raw) return [];
   try{ return JSON.parse(raw) || []; }catch(e){ return []; }
 }
-function persistRecords(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+function persistTab(tab){
+  localStorage.setItem(TABS[tab].key, JSON.stringify(store[tab]));
 }
 
-let records = loadRecords();
-let sortKey = 'date';
+let store = { estimate: loadTab('estimate'), invoice: loadTab('invoice') };
+let currentTab = 'estimate';
+let sortKey = TABS.estimate.dateField;
 let sortDir = 'desc';
 let editingId = null;
 
@@ -316,7 +379,19 @@ function escapeHtml(s){
   return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/* ===== CSV読み込み(スマホアプリからの取り込み) ===== */
+/* ===== タブ切替 ===== */
+function switchTab(tab){
+  if(!TABS[tab] || tab === currentTab) return;
+  currentTab = tab;
+  sortKey = TABS[tab].dateField;
+  sortDir = 'desc';
+  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('ledgerTitle').textContent = TABS[tab].label + '一覧';
+  renderHead();
+  renderTable();
+}
+
+/* ===== CSV読み込み(見積アプリ・請求書からの取り込み) ===== */
 function parseCsv(text){
   text = text.replace(/^﻿/, '');
   const rows = [];
@@ -342,43 +417,76 @@ function parseCsv(text){
   return rows.filter(r => r.length > 1 || (r.length===1 && r[0] !== ''));
 }
 
-function recordKey(r){
-  return [r.date, r.customer, r.no, r.amount].join('|');
+function recordKey(r, tab){
+  const df = TABS[tab].dateField;
+  return [r[df], r.customer, r.no, r.amount].join('|');
+}
+
+/* ヘッダー行の内容から見積CSVか請求CSVかを判定する */
+function detectTab(headerRow){
+  return /請求番号|請求日/.test((headerRow || []).join(',')) ? 'invoice' : 'estimate';
+}
+function rowToRecord(cols, tab){
+  if(tab === 'invoice'){
+    return {
+      id: uid(),
+      invoiceDate: cols[0] || '',
+      workDate: cols[1] || '',
+      customer: cols[2] || '',
+      address: cols[3] || '',
+      no: cols[4] || '',
+      summary: cols[5] || '',
+      amount: parseFloat((cols[6]||'0').toString().replace(/[^0-9.-]/g,'')) || 0
+    };
+  }
+  return {
+    id: uid(),
+    date: cols[0] || '',
+    customer: cols[1] || '',
+    address: cols[2] || '',
+    no: cols[3] || '',
+    summary: cols[4] || '',
+    amount: parseFloat((cols[5]||'0').toString().replace(/[^0-9.-]/g,'')) || 0
+  };
 }
 
 function importCsvFiles(event){
   const files = Array.from(event.target.files || []);
   if(files.length === 0) return;
-  const existingKeys = new Set(records.map(recordKey));
-  let added = 0, skipped = 0, filesDone = 0;
+  const existing = {
+    estimate: new Set(store.estimate.map(r=>recordKey(r,'estimate'))),
+    invoice: new Set(store.invoice.map(r=>recordKey(r,'invoice')))
+  };
+  const added = { estimate:0, invoice:0 };
+  let skipped = 0, filesDone = 0;
 
   files.forEach(file=>{
     const reader = new FileReader();
     reader.onload = e=>{
       const rows = parseCsv(e.target.result);
-      const dataRows = rows.length && /日付/.test(rows[0][0]||'') ? rows.slice(1) : rows;
+      const tab = detectTab(rows[0] || []);
+      const hasHeader = rows.length && /日付|請求日/.test(rows[0][0]||'');
+      const dataRows = hasHeader ? rows.slice(1) : rows;
       dataRows.forEach(cols=>{
         if(!cols[0]) return;
-        const rec = {
-          id: uid(),
-          date: cols[0] || '',
-          customer: cols[1] || '',
-          address: cols[2] || '',
-          no: cols[3] || '',
-          summary: cols[4] || '',
-          amount: parseFloat((cols[5]||'0').toString().replace(/[^0-9.-]/g,'')) || 0
-        };
-        const key = recordKey(rec);
-        if(existingKeys.has(key)){ skipped++; return; }
-        existingKeys.add(key);
-        records.push(rec);
-        added++;
+        const rec = rowToRecord(cols, tab);
+        const key = recordKey(rec, tab);
+        if(existing[tab].has(key)){ skipped++; return; }
+        existing[tab].add(key);
+        store[tab].push(rec);
+        added[tab]++;
       });
       filesDone++;
       if(filesDone === files.length){
-        persistRecords();
-        renderTable();
-        showStatus(`${added}件を取り込みました${skipped ? `(${skipped}件は重複のためスキップ)` : ''}`);
+        persistTab('estimate');
+        persistTab('invoice');
+        if(added.invoice && !added.estimate && currentTab !== 'invoice') switchTab('invoice');
+        else if(added.estimate && !added.invoice && currentTab !== 'estimate') switchTab('estimate');
+        else renderTable();
+        const parts = [];
+        if(added.estimate) parts.push(`見積${added.estimate}件`);
+        if(added.invoice) parts.push(`請求${added.invoice}件`);
+        showStatus(`${parts.join('・') || '0件'}を取り込みました${skipped ? `(${skipped}件は重複のためスキップ)` : ''}`);
       }
     };
     reader.readAsText(file, 'UTF-8');
@@ -408,11 +516,14 @@ function getFiltered(){
   const q = (document.getElementById('q').value || '').trim().toLowerCase();
   const from = document.getElementById('fromDate').value;
   const to = document.getElementById('toDate').value;
-  let list = records.filter(r=>{
-    if(from && r.date && r.date < from) return false;
-    if(to && r.date && r.date > to) return false;
+  const df = TABS[currentTab].dateField;
+  const textCols = TABS[currentTab].columns.filter(c=>!c.amount).map(c=>c.key);
+  let list = store[currentTab].filter(r=>{
+    const d = r[df];
+    if(from && d && d < from) return false;
+    if(to && d && d > to) return false;
     if(q){
-      const hay = [r.customer, r.address, r.no, r.summary].join(' ').toLowerCase();
+      const hay = textCols.map(k=> r[k] || '').join(' ').toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
@@ -428,26 +539,29 @@ function getFiltered(){
   return list;
 }
 
+function renderHead(){
+  const cols = TABS[currentTab].columns;
+  document.querySelector('table.ledger thead').innerHTML = '<tr>' +
+    cols.map(c=>`<th data-key="${c.key}" onclick="setSort('${c.key}')">${escapeHtml(c.label)}</th>`).join('') +
+    '<th class="no-print">操作</th></tr>';
+}
+
 function renderTable(){
   const list = getFiltered();
+  const cols = TABS[currentTab].columns;
   const tbody = document.getElementById('tbody');
   if(list.length === 0){
-    tbody.innerHTML = `<tr><td colspan="7" class="note" style="padding:14px">データがありません。</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${cols.length + 1}" class="note" style="padding:14px">データがありません。</td></tr>`;
   } else {
-    tbody.innerHTML = list.map(r=>`
-      <tr>
-        <td>${escapeHtml(r.date)}</td>
-        <td>${escapeHtml(r.customer)}</td>
-        <td>${escapeHtml(r.address)}</td>
-        <td>${escapeHtml(r.no)}</td>
-        <td>${escapeHtml(r.summary)}</td>
-        <td class="amount">${yen(r.amount)}</td>
-        <td class="no-print">
+    tbody.innerHTML = list.map(r=>{
+      const tds = cols.map(c=> c.amount
+        ? `<td class="amount">${yen(r[c.key])}</td>`
+        : `<td>${escapeHtml(r[c.key])}</td>`).join('');
+      return `<tr>${tds}<td class="no-print">
           <button class="btn small secondary" onclick="openEditModal('${r.id}')">編集</button>
           <button class="btn small danger" onclick="deleteRecord('${r.id}')">削除</button>
-        </td>
-      </tr>
-    `).join('');
+        </td></tr>`;
+    }).join('');
   }
   document.querySelectorAll('table.ledger th[data-key]').forEach(th=>{
     th.classList.toggle('sorted', th.dataset.key === sortKey);
@@ -459,57 +573,72 @@ function renderTable(){
 }
 
 /* ===== 手入力・編集 ===== */
+function applyModalTabUI(){
+  const isInv = currentTab === 'invoice';
+  document.getElementById('e_dateLabel').textContent = isInv ? '請求日' : '日付';
+  document.getElementById('e_noLabel').textContent = TABS[currentTab].noLabel;
+  document.getElementById('e_workDateRow').style.display = isInv ? '' : 'none';
+}
+function fillModal(r){
+  const df = TABS[currentTab].dateField;
+  document.getElementById('e_date').value = r[df] || '';
+  document.getElementById('e_workDate').value = r.workDate || '';
+  document.getElementById('e_customer').value = r.customer || '';
+  document.getElementById('e_address').value = r.address || '';
+  document.getElementById('e_no').value = r.no || '';
+  document.getElementById('e_summary').value = r.summary || '';
+  document.getElementById('e_amount').value = (r.amount != null && r.amount !== '') ? r.amount : '';
+}
 function openAddModal(){
   editingId = null;
-  document.getElementById('editModalTitle').textContent = '手入力で追加';
+  document.getElementById('editModalTitle').textContent = TABS[currentTab].label + ': 手入力で追加';
+  applyModalTabUI();
+  fillModal({});
   document.getElementById('e_date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('e_customer').value = '';
-  document.getElementById('e_address').value = '';
-  document.getElementById('e_no').value = '';
-  document.getElementById('e_summary').value = '';
-  document.getElementById('e_amount').value = '';
   document.getElementById('editModal').classList.add('open');
 }
 function openEditModal(id){
-  const r = records.find(x=>x.id===id);
+  const r = store[currentTab].find(x=>x.id===id);
   if(!r) return;
   editingId = id;
-  document.getElementById('editModalTitle').textContent = '編集';
-  document.getElementById('e_date').value = r.date;
-  document.getElementById('e_customer').value = r.customer;
-  document.getElementById('e_address').value = r.address;
-  document.getElementById('e_no').value = r.no;
-  document.getElementById('e_summary').value = r.summary;
-  document.getElementById('e_amount').value = r.amount;
+  document.getElementById('editModalTitle').textContent = TABS[currentTab].label + ': 編集';
+  applyModalTabUI();
+  fillModal(r);
   document.getElementById('editModal').classList.add('open');
 }
 function closeEditModal(){
   document.getElementById('editModal').classList.remove('open');
 }
 function saveEditModal(){
+  const tab = currentTab;
   const data = {
-    date: document.getElementById('e_date').value,
     customer: document.getElementById('e_customer').value,
     address: document.getElementById('e_address').value,
     no: document.getElementById('e_no').value,
     summary: document.getElementById('e_summary').value,
     amount: parseFloat(document.getElementById('e_amount').value) || 0
   };
+  if(tab === 'invoice'){
+    data.invoiceDate = document.getElementById('e_date').value;
+    data.workDate = document.getElementById('e_workDate').value;
+  } else {
+    data.date = document.getElementById('e_date').value;
+  }
   if(editingId){
-    const r = records.find(x=>x.id===editingId);
+    const r = store[tab].find(x=>x.id===editingId);
     Object.assign(r, data);
   } else {
-    records.push(Object.assign({id: uid()}, data));
+    store[tab].push(Object.assign({id: uid()}, data));
   }
-  persistRecords();
+  persistTab(tab);
   closeEditModal();
   renderTable();
   showStatus('保存しました');
 }
 function deleteRecord(id){
   if(!confirm('この行を削除します。よろしいですか?')) return;
-  records = records.filter(r=>r.id!==id);
-  persistRecords();
+  store[currentTab] = store[currentTab].filter(r=>r.id!==id);
+  persistTab(currentTab);
   renderTable();
 }
 
@@ -521,32 +650,46 @@ function csvEscape(s){
 }
 function exportCsv(){
   const list = getFiltered();
-  const header = ['日付','顧客名','現場住所','見積番号','摘要','合計金額'];
-  const lines = [header.map(csvEscape).join(',')];
-  list.forEach(r=>{
-    lines.push([r.date, r.customer, r.address, r.no, r.summary, Math.round(r.amount)].map(csvEscape).join(','));
-  });
+  const cfg = TABS[currentTab];
+  const lines = [cfg.csvHeader.map(csvEscape).join(',')];
+  list.forEach(r=>{ lines.push(cfg.csvRow(r).map(csvEscape).join(',')); });
   const csv = lines.join('\r\n') + '\r\n';
   const blob = new Blob(['﻿'+csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = '見積台帳_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = cfg.label + '_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
   showStatus('CSVを書き出しました');
 }
 
-/* ===== バックアップ・復元 ===== */
+/* ===== バックアップ・復元(見積・請求まとめて1ファイル) ===== */
 function backupJson(){
-  const blob = new Blob([JSON.stringify(records, null, 2)], {type:'application/json'});
+  const data = { _format:'ledger-v2', estimate: store.estimate, invoice: store.invoice };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = '見積台帳バックアップ_' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = '台帳バックアップ_' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
-  showStatus('バックアップを保存しました');
+  showStatus('バックアップを保存しました(見積・請求まとめて)');
+}
+function normalizeRecord(r, tab){
+  if(tab === 'invoice'){
+    return {
+      id: r.id || uid(),
+      invoiceDate: r.invoiceDate || '', workDate: r.workDate || '',
+      customer: r.customer || '', address: r.address || '', no: r.no || '',
+      summary: r.summary || '', amount: parseFloat(r.amount) || 0
+    };
+  }
+  return {
+    id: r.id || uid(),
+    date: r.date || '', customer: r.customer || '', address: r.address || '',
+    no: r.no || '', summary: r.summary || '', amount: parseFloat(r.amount) || 0
+  };
 }
 function restoreJson(event){
   const file = event.target.files[0];
@@ -555,25 +698,31 @@ function restoreJson(event){
   reader.onload = e=>{
     try{
       const data = JSON.parse(e.target.result);
-      if(!Array.isArray(data)) throw new Error('invalid');
-      if(!confirm(`${data.length}件のバックアップを読み込みます。現在のデータに追加されます(重複はスキップ)。よろしいですか?`)) return;
-      const existingKeys = new Set(records.map(recordKey));
-      let added = 0;
-      data.forEach(r=>{
-        const rec = {
-          id: r.id || uid(),
-          date: r.date || '', customer: r.customer || '', address: r.address || '',
-          no: r.no || '', summary: r.summary || '', amount: parseFloat(r.amount)||0
-        };
-        const key = recordKey(rec);
-        if(existingKeys.has(key)) return;
-        existingKeys.add(key);
-        records.push(rec);
-        added++;
+      const incoming = { estimate:[], invoice:[] };
+      if(Array.isArray(data)){
+        incoming.estimate = data; // 旧形式(配列のみ)は見積台帳として扱う
+      } else if(data && typeof data === 'object'){
+        incoming.estimate = Array.isArray(data.estimate) ? data.estimate : [];
+        incoming.invoice = Array.isArray(data.invoice) ? data.invoice : [];
+      } else {
+        throw new Error('invalid');
+      }
+      if(!confirm(`見積${incoming.estimate.length}件・請求${incoming.invoice.length}件のバックアップを読み込みます。現在のデータに追加されます(重複はスキップ)。よろしいですか?`)) return;
+      const done = { estimate:0, invoice:0 };
+      ['estimate','invoice'].forEach(tab=>{
+        const existing = new Set(store[tab].map(r=>recordKey(r, tab)));
+        incoming[tab].forEach(r=>{
+          const rec = normalizeRecord(r, tab);
+          const key = recordKey(rec, tab);
+          if(existing.has(key)) return;
+          existing.add(key);
+          store[tab].push(rec);
+          done[tab]++;
+        });
+        persistTab(tab);
       });
-      persistRecords();
       renderTable();
-      showStatus(`${added}件を復元しました`);
+      showStatus(`見積${done.estimate}件・請求${done.invoice}件を復元しました`);
     }catch(err){
       alert('ファイルの読み込みに失敗しました');
     }
@@ -589,6 +738,7 @@ function showStatus(msg){
   setTimeout(()=>el.classList.remove('show'), 2200);
 }
 
+renderHead();
 renderTable();
 </script>
 </body>
