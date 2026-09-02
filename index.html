@@ -2313,7 +2313,7 @@ function itemPrintRows(it){
     if(parseFloat(it.other)) rows.push({content:'その他', qty:'', amount: parseFloat(it.other)});
   }
   if(it.type==='grass'){
-    rows.push({content: (it.method==='machine'?'機械刈り':'刈払機'), qty:`${it.area}㎡`, amount: itemAmount(it)});
+    rows.push({content: (it.method==='machine'?'機械刈り':''), qty:`${it.area}㎡`, amount: itemAmount(it)});
   }
   if(it.type==='pesticide'){
     rows.push({content:'', qty:`${parseFloat(it.count)||0}本`, amount: itemAmount(it)});
