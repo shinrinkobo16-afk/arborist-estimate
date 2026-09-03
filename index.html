@@ -460,7 +460,7 @@
         <tr><td>課税対象 小計</td><td id="invTaxableSubtotal">0円</td></tr>
         <tr><td>消費税(10%)</td><td id="invTaxAmount">0円</td></tr>
         <tr><td>非課税 小計(交通費など)</td><td id="invNontaxSubtotal">0円</td></tr>
-        <tr class="grand"><td>ご請求金額</td><td id="invGrandTotal">0円</td></tr>
+        <tr class="grand"><td>ご請求金額</td><td id="invGrandTotal">税込み　0円</td></tr>
       </table>
 
       <div class="btn-row no-print" style="margin-top:10px;">
@@ -1932,7 +1932,7 @@ function renderInvoiceTotals(){
   document.getElementById('invTaxableSubtotal').textContent = yen(t.taxable);
   document.getElementById('invTaxAmount').textContent = yen(t.tax);
   document.getElementById('invNontaxSubtotal').textContent = yen(t.nontax);
-  document.getElementById('invGrandTotal').textContent = yen(t.total);
+  document.getElementById('invGrandTotal').textContent = '税込み　' + yen(t.total);
 }
 
 function renderInvoiceAdjustments(){
@@ -2542,7 +2542,7 @@ function renderInvoicePrintArea(){
       <tr><td>課税対象 小計</td><td style="text-align:right">${yen(t.taxable)}</td></tr>
       <tr><td>消費税(10%)</td><td style="text-align:right">${yen(t.tax)}</td></tr>
       <tr><td>非課税 小計</td><td style="text-align:right">${yen(t.nontax)}</td></tr>
-      <tr class="grand"><td>ご請求金額</td><td style="text-align:right">${yen(t.total)}</td></tr>
+      <tr class="grand"><td>ご請求金額</td><td style="text-align:right">税込み　${yen(t.total)}</td></tr>
     </table>
     ${bankBlock}
     ${noteBlock}
