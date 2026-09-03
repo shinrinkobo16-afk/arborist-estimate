@@ -1062,61 +1062,68 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 const SETTINGS_KEY = 'arborist_settings_v1';
 const AUTOSAVE_KEY = 'arborist_autosave_v1';
 
+/* 単価項目のIDは固定値にする。
+   以前は id: uid() で端末ごと・アプリを開き直すたびにランダムなIDを振っていたため、
+   見積データファイル(.txt)を別端末で開いたり、スマホのブラウザが localStorage を
+   消したあとに開いたりすると、ファイル内の presetId/roleId が単価設定側のIDと一致せず、
+   処分費・運搬費・人工などの金額が0円になり、PDFでは該当行が丸ごと消えていた。
+   固定IDにすることで「初期設定のまま使う限り」どの端末・データ消去後でも金額が復元できる。
+   単価をカスタマイズした場合の保険として、保存時に金額・名称も .txt に書き込む(bakeItem)。 */
 function defaultSettings(){
   return {
     laborRoles: [
-      {id: uid(), name:'クライマー', price:35000},
-      {id: uid(), name:'グランドワーカー', price:30000},
-      {id: uid(), name:'作業員', price:20000}
+      {id: 'labor-climber', name:'クライマー', price:35000},
+      {id: 'labor-ground', name:'グランドワーカー', price:30000},
+      {id: 'labor-worker', name:'作業員', price:20000}
     ],
     gardenLaborRoles: [
-      {id: uid(), name:'一日', price:50000},
-      {id: uid(), name:'半日', price:30000}
+      {id: 'glabor-full', name:'一日', price:50000},
+      {id: 'glabor-half', name:'半日', price:30000}
     ],
     disposalPresets: [
-      {id: uid(), label:'小', price:3000},
-      {id: uid(), label:'中', price:5000},
-      {id: uid(), label:'大', price:8000},
-      {id: uid(), label:'特大', price:10000},
-      {id: uid(), label:'0円', price:0}
+      {id: 'disposal-s', label:'小', price:3000},
+      {id: 'disposal-m', label:'中', price:5000},
+      {id: 'disposal-l', label:'大', price:8000},
+      {id: 'disposal-xl', label:'特大', price:10000},
+      {id: 'disposal-zero', label:'0円', price:0}
     ],
     perTreePresets: [
-      {id: uid(), label:'3m', price:3000},
-      {id: uid(), label:'5m', price:6000}
+      {id: 'pertree-3m', label:'3m', price:3000},
+      {id: 'pertree-5m', label:'5m', price:6000}
     ],
     woodDensity: 0.8,
     disposalPricePerKg: 25,
     machinePresets: [
-      {id: uid(), label:'小型', price:3000},
-      {id: uid(), label:'中型', price:5000},
-      {id: uid(), label:'チッパー', price:10000}
+      {id: 'machine-s', label:'小型', price:3000},
+      {id: 'machine-m', label:'中型', price:5000},
+      {id: 'machine-chipper', label:'チッパー', price:10000}
     ],
     extraPresets: [
-      {id: uid(), label:'クライミングギア損料', price:5000},
-      {id: uid(), label:'リギングギア損料', price:5000},
-      {id: uid(), label:'レンタル料', price:20000}
+      {id: 'extra-climbing', label:'クライミングギア損料', price:5000},
+      {id: 'extra-rigging', label:'リギングギア損料', price:5000},
+      {id: 'extra-rental', label:'レンタル料', price:20000}
     ],
     gardenExtraPresets: [
-      {id: uid(), label:'レンタル料', price:20000}
+      {id: 'gextra-rental', label:'レンタル料', price:20000}
     ],
     carryFeePresets: [
-      {id: uid(), label:'なし', price:0},
-      {id: uid(), label:'軽作業', price:5000},
-      {id: uid(), label:'標準', price:10000},
-      {id: uid(), label:'手間あり(段差・狭小など)', price:15000},
-      {id: uid(), label:'重労働(長距離・階段等)', price:20000}
+      {id: 'carry-none', label:'なし', price:0},
+      {id: 'carry-light', label:'軽作業', price:5000},
+      {id: 'carry-standard', label:'標準', price:10000},
+      {id: 'carry-hard', label:'手間あり(段差・狭小など)', price:15000},
+      {id: 'carry-heavy', label:'重労働(長距離・階段等)', price:20000}
     ],
     grassMachine: 50,
     grassTrimmer: 100,
     pestBasePrice: 3000,
     pestPerAdditional: 500,
     herbicidePresets: [
-      {id: uid(), price:3000},
-      {id: uid(), price:5000},
-      {id: uid(), price:8000},
-      {id: uid(), price:10000},
-      {id: uid(), price:15000},
-      {id: uid(), price:20000}
+      {id: 'herb-3000', price:3000},
+      {id: 'herb-5000', price:5000},
+      {id: 'herb-8000', price:8000},
+      {id: 'herb-10000', price:10000},
+      {id: 'herb-15000', price:15000},
+      {id: 'herb-20000', price:20000}
     ],
     transportDefault: 2000
   };
@@ -1409,19 +1416,30 @@ function treeDisposalAmount(it){
   if(raw <= 0) return 0;
   return ceilToDisposalTier(raw);
 }
+/* ID が現在の単価設定に見つからないとき、保存時に .txt へ書き込んだ金額(_price 等)に
+   フォールバックする。旧バージョンで保存したファイル(_price 無し)や、フォールバックも
+   無い場合は従来どおり 0。値が取れる限り金額を落とさないための保険。 */
+function fallbackNum(v){
+  return (v===undefined || v===null || v==='') ? null : (parseFloat(v)||0);
+}
 function gardenDisposalAmount(it){
   const p = settings.disposalPresets.find(p=>p.id===it.presetId);
-  return p ? p.price : 0;
+  if(p) return p.price;
+  const fb = fallbackNum(it._disposalPrice);
+  return fb!==null ? fb : 0;
 }
 function carryFeeAmount(it){
   const p = settings.carryFeePresets.find(p=>p.id===it.carryFeePresetId);
-  return p ? p.price : 0;
+  if(p) return p.price;
+  const fb = fallbackNum(it._carryPrice);
+  return fb!==null ? fb : 0;
 }
 function laborAmount(it){
   const roles = laborRolesFor(it);
   return (it.labors||[]).reduce((sum,l)=>{
     const role = roles.find(r=>r.id===l.roleId);
-    const price = role ? role.price : 0;
+    const fb = fallbackNum(l._price);
+    const price = role ? role.price : (fb!==null ? fb : 0);
     return sum + price * (parseFloat(l.count)||0);
   }, 0);
 }
@@ -1432,7 +1450,8 @@ function perTreeAmount(it){
       price = parseFloat(p.customPrice)||0;
     } else {
       const preset = settings.perTreePresets.find(x=>x.id===p.presetId);
-      price = preset ? preset.price : 0;
+      const fb = fallbackNum(p._price);
+      price = preset ? preset.price : (fb!==null ? fb : 0);
     }
     return sum + price * (parseFloat(p.qty)||0);
   }, 0);
@@ -1440,7 +1459,8 @@ function perTreeAmount(it){
 function machinesAmount(it){
   return (it.machines||[]).reduce((sum,m)=>{
     const p = settings.machinePresets.find(p=>p.id===m.presetId);
-    const price = p ? p.price : 0;
+    const fb = fallbackNum(m._price);
+    const price = p ? p.price : (fb!==null ? fb : 0);
     return sum + price * (parseFloat(m.days)||0);
   }, 0);
 }
@@ -1448,7 +1468,8 @@ function extrasAmount(it){
   const presets = extraPresetsFor(it);
   return (it.extras||[]).reduce((sum,e)=>{
     const p = presets.find(p=>p.id===e.presetId);
-    const price = p ? p.price : 0;
+    const fb = fallbackNum(e._price);
+    const price = p ? p.price : (fb!==null ? fb : 0);
     return sum + price * (parseFloat(e.qty)||0);
   }, 0);
 }
@@ -1470,7 +1491,9 @@ function itemAmount(it){
   if(it.type==='herbicide'){
     if(it.presetId==='custom') return parseFloat(it.customPrice)||0;
     const p = settings.herbicidePresets.find(p=>p.id===it.presetId);
-    return p ? p.price : 0;
+    if(p) return p.price;
+    const fb = fallbackNum(it._herbicidePrice);
+    return fb!==null ? fb : 0;
   }
   if(it.type==='transport'){
     return parseFloat(it.amount)||0;
@@ -2263,29 +2286,49 @@ function itemPrintLabel(it){
 }
 function itemPrintRows(it){
   const rows = [];
-  if(it.type==='tree'){
-    (it.labors||[]).forEach(l=>{
-      const role = settings.laborRoles.find(r=>r.id===l.roleId);
-      if(role) rows.push({content:`人工: ${role.name}`, qty:`${l.count}`, amount: role.price*(parseFloat(l.count)||0)});
-    });
-    rows.push({content:'処分費', qty:'', amount: treeDisposalAmount(it)});
-    (it.machines||[]).forEach(m=>{
-      const p = settings.machinePresets.find(p=>p.id===m.presetId);
-      if(p) rows.push({content:`機械: ${p.label}`, qty:`${m.days}日`, amount: p.price*(parseFloat(m.days)||0)});
-    });
-    (it.extras||[]).forEach(e=>{
-      const p = extraPresetsFor(it).find(p=>p.id===e.presetId);
-      if(p) rows.push({content: p.label, qty:`${e.qty}`, amount: p.price*(parseFloat(e.qty)||0)});
-    });
+  /* preset の ID が現在の単価設定に無い場合は、保存時に .txt へ書き込んだ名称・金額
+     (_name/_label/_price)で行を出す。これが無いと PDF から該当行が丸ごと消えていた。 */
+  const laborRow = (l, roleList)=>{
+    const role = roleList.find(r=>r.id===l.roleId);
+    const fb = fallbackNum(l._price);
+    if(!role && fb===null) return;
+    const name = role ? role.name : (l._name || '');
+    const price = role ? role.price : fb;
+    rows.push({content:`人工: ${name}`.trim(), qty:`${l.count}`, amount: price*(parseFloat(l.count)||0)});
+  };
+  const machineRow = (m)=>{
+    const p = settings.machinePresets.find(x=>x.id===m.presetId);
+    const fb = fallbackNum(m._price);
+    if(!p && fb===null) return;
+    const label = p ? p.label : (m._label || '');
+    const price = p ? p.price : fb;
+    rows.push({content:`機械: ${label}`.trim(), qty:`${m.days}日`, amount: price*(parseFloat(m.days)||0)});
+  };
+  const extraRow = (e)=>{
+    const p = extraPresetsFor(it).find(x=>x.id===e.presetId);
+    const fb = fallbackNum(e._price);
+    if(!p && fb===null) return;
+    const label = p ? p.label : (e._label || '追加項目');
+    const price = p ? p.price : fb;
+    rows.push({content: label, qty:`${e.qty}`, amount: price*(parseFloat(e.qty)||0)});
+  };
+  const carryRow = ()=>{
     const cf = settings.carryFeePresets.find(p=>p.id===it.carryFeePresetId);
-    if(cf) rows.push({content:`運搬費: ${cf.label}`, qty:'', amount: cf.price});
+    const fb = fallbackNum(it._carryPrice);
+    if(!cf && fb===null) return;
+    const label = cf ? cf.label : (it._carryLabel || '');
+    rows.push({content:`運搬費: ${label}`.trim(), qty:'', amount: cf ? cf.price : fb});
+  };
+  if(it.type==='tree'){
+    (it.labors||[]).forEach(l=>laborRow(l, settings.laborRoles));
+    rows.push({content:'処分費', qty:'', amount: treeDisposalAmount(it)});
+    (it.machines||[]).forEach(machineRow);
+    (it.extras||[]).forEach(extraRow);
+    carryRow();
     if(parseFloat(it.other)) rows.push({content:'その他', qty:'', amount: parseFloat(it.other)});
   }
   if(it.type==='garden'){
-    (it.labors||[]).forEach(l=>{
-      const role = settings.gardenLaborRoles.find(r=>r.id===l.roleId);
-      if(role) rows.push({content:`人工: ${role.name}`, qty:`${l.count}`, amount: role.price*(parseFloat(l.count)||0)});
-    });
+    (it.labors||[]).forEach(l=>laborRow(l, settings.gardenLaborRoles));
     (it.perTree||[]).forEach(p=>{
       let label, price;
       if(p.presetId==='custom'){
@@ -2293,23 +2336,20 @@ function itemPrintRows(it){
         price = parseFloat(p.customPrice)||0;
       } else {
         const preset = settings.perTreePresets.find(x=>x.id===p.presetId);
-        label = preset ? preset.label : '';
-        price = preset ? preset.price : 0;
+        const fb = fallbackNum(p._price);
+        if(!preset && fb===null) return;
+        label = preset ? preset.label : (p._label || '');
+        price = preset ? preset.price : fb;
       }
-      if(label) rows.push({content:`1本あたり: ${label}`, qty:`${p.qty}本`, amount: price*(parseFloat(p.qty)||0)});
+      rows.push({content:`1本あたり: ${label}`.trim(), qty:`${p.qty}本`, amount: price*(parseFloat(p.qty)||0)});
     });
     const preset = settings.disposalPresets.find(p=>p.id===it.presetId);
+    const dfb = fallbackNum(it._disposalPrice);
     if(preset) rows.push({content:`処分費: ${preset.label}`, qty:'', amount: preset.price});
-    (it.machines||[]).forEach(m=>{
-      const p = settings.machinePresets.find(p=>p.id===m.presetId);
-      if(p) rows.push({content:`機械: ${p.label}`, qty:`${m.days}日`, amount: p.price*(parseFloat(m.days)||0)});
-    });
-    (it.extras||[]).forEach(e=>{
-      const p = extraPresetsFor(it).find(p=>p.id===e.presetId);
-      if(p) rows.push({content: p.label, qty:`${e.qty}`, amount: p.price*(parseFloat(e.qty)||0)});
-    });
-    const cf = settings.carryFeePresets.find(p=>p.id===it.carryFeePresetId);
-    if(cf) rows.push({content:`運搬費: ${cf.label}`, qty:'', amount: cf.price});
+    else if(dfb!==null) rows.push({content:`処分費: ${it._disposalLabel||''}`.trim(), qty:'', amount: dfb});
+    (it.machines||[]).forEach(machineRow);
+    (it.extras||[]).forEach(extraRow);
+    carryRow();
     if(parseFloat(it.other)) rows.push({content:'その他', qty:'', amount: parseFloat(it.other)});
   }
   if(it.type==='grass'){
@@ -2701,6 +2741,43 @@ async function saveAllForMyself(){
 }
 
 /* ===== ファイル保存・読み込み ===== */
+/* 保存する項目に、現在の単価設定から引いた金額・名称を _price / _label / _name として
+   焼き込む。別端末やデータ消去後に読み込んで presetId が一致しなくても、
+   この値から金額とPDFの明細行を復元できる(fallbackNum を参照)。
+   presetId 自体は残すので、同じ設定の端末で開けば従来どおり最新単価で再計算される。 */
+function bakeItems(){
+  return items.map(it=>{
+    const b = JSON.parse(JSON.stringify(it));
+    const roles = laborRolesFor(it);
+    (b.labors||[]).forEach(l=>{
+      const r = roles.find(x=>x.id===l.roleId);
+      if(r){ l._name = r.name; l._price = r.price; }
+    });
+    (b.perTree||[]).forEach(p=>{
+      if(p.presetId && p.presetId!=='custom'){
+        const x = settings.perTreePresets.find(y=>y.id===p.presetId);
+        if(x){ p._label = x.label; p._price = x.price; }
+      }
+    });
+    (b.machines||[]).forEach(m=>{
+      const x = settings.machinePresets.find(y=>y.id===m.presetId);
+      if(x){ m._label = x.label; m._price = x.price; }
+    });
+    (b.extras||[]).forEach(e=>{
+      const x = extraPresetsFor(it).find(y=>y.id===e.presetId);
+      if(x){ e._label = x.label; e._price = x.price; }
+    });
+    const d = settings.disposalPresets.find(y=>y.id===b.presetId);
+    if(d && (b.type==='garden')){ b._disposalLabel = d.label; b._disposalPrice = d.price; }
+    const cf = settings.carryFeePresets.find(y=>y.id===b.carryFeePresetId);
+    if(cf){ b._carryLabel = cf.label; b._carryPrice = cf.price; }
+    if(b.type==='herbicide' && b.presetId && b.presetId!=='custom'){
+      const h = settings.herbicidePresets.find(y=>y.id===b.presetId);
+      if(h){ b._herbicidePrice = h.price; }
+    }
+    return b;
+  });
+}
 function buildEstimateDataFile(){
   ensureFreshEstimateNo();
   const data = {
@@ -2710,7 +2787,7 @@ function buildEstimateDataFile(){
       date: document.getElementById('estimateDate').value,
       no: document.getElementById('estimateNo').value
     },
-    items: items,
+    items: bakeItems(),
     invoice: invoice
   };
   const filename = (data.info.customerName || '見積') + '_' + (data.info.date || '') + (data.info.no ? '_'+data.info.no : '') + '_' + fileTimeStamp() + '.txt';
@@ -2770,7 +2847,7 @@ function autosave(){
       date: document.getElementById('estimateDate').value,
       no: document.getElementById('estimateNo').value
     },
-    items: items,
+    items: bakeItems(),
     invoice: invoice
   };
   localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
