@@ -1073,6 +1073,7 @@ function defaultSettings(){
   return {
     laborRoles: [
       {id: 'labor-climber', name:'クライマー', price:35000},
+      {id: 'labor-highwork', name:'高所作業人員', price:35000},
       {id: 'labor-ground', name:'グランドワーカー', price:30000},
       {id: 'labor-worker', name:'作業員', price:20000}
     ],
@@ -2302,7 +2303,7 @@ function itemPrintRows(it){
     if(!p && fb===null) return;
     const label = p ? p.label : (m._label || '');
     const price = p ? p.price : fb;
-    rows.push({content:`機械: ${label}`.trim(), qty:`${m.days}日`, amount: price*(parseFloat(m.days)||0)});
+    rows.push({content:`機械: ${label}`.trim(), qty:`${m.days}`, amount: price*(parseFloat(m.days)||0)});
   };
   const extraRow = (e)=>{
     const p = extraPresetsFor(it).find(x=>x.id===e.presetId);
