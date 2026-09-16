@@ -6,15 +6,17 @@
 <title>現場見積作成ツール</title>
 <style>
   :root{
-    --main:#2f6b3a;
-    --main-dark:#204a28;
-    --accent:#c9722a;
-    --bg:#f4f5f1;
-    --card:#ffffff;
-    --border:#d8dbd2;
-    --text:#2b2b28;
-    --muted:#767a70;
-    --danger:#b23b3b;
+    --main:#3fa155;
+    --main-dark:#7cd98a;
+    --accent:#e08a3f;
+    --bg:#1b1d19;
+    --card:#242721;
+    --card-2:#2c2f27;
+    --border:#5c6450;
+    --border-input:#8a9a9a;
+    --text:#e8e9e2;
+    --muted:#c3c9ba;
+    --danger:#e5726f;
   }
   *{box-sizing:border-box;}
   body{
@@ -23,6 +25,8 @@
     background:var(--bg);
     color:var(--text);
     padding-bottom:60px;
+    font-size:16px;
+    color-scheme:dark;
   }
   header.appbar{
     background:var(--main);
@@ -37,7 +41,7 @@
     box-shadow:0 2px 6px rgba(0,0,0,0.15);
   }
   header.appbar h1{
-    font-size:17px;
+    font-size:20px;
     margin:0;
   }
   header.appbar button{
@@ -45,8 +49,8 @@
     color:#fff;
     border:1px solid rgba(255,255,255,0.5);
     border-radius:6px;
-    padding:6px 10px;
-    font-size:13px;
+    padding:8px 12px;
+    font-size:15px;
   }
   main{
     max-width:760px;
@@ -55,13 +59,13 @@
   }
   .card{
     background:var(--card);
-    border:1px solid var(--border);
+    border:2px solid var(--border);
     border-radius:10px;
     padding:14px;
     margin-bottom:14px;
   }
   .card h2{
-    font-size:15px;
+    font-size:18px;
     margin:0 0 10px 0;
     color:var(--main-dark);
     border-left:4px solid var(--accent);
@@ -78,17 +82,19 @@
   }
   label{
     display:block;
-    font-size:12px;
+    font-size:14px;
+    font-weight:500;
     color:var(--muted);
     margin-bottom:2px;
   }
   input, select, textarea{
     width:100%;
-    padding:9px 8px;
-    border:1px solid var(--border);
+    padding:11px 10px;
+    border:1px solid var(--border-input);
     border-radius:6px;
-    font-size:15px;
-    background:#fff;
+    font-size:17px;
+    background:var(--card-2);
+    color:var(--text);
   }
   textarea{
     resize:vertical;
@@ -99,22 +105,22 @@
   }
   button{
     cursor:pointer;
-    font-size:14px;
+    font-size:16px;
   }
   .btn{
     background:var(--main);
     color:#fff;
     border:none;
     border-radius:7px;
-    padding:10px 14px;
+    padding:12px 16px;
   }
   .btn.secondary{
-    background:#fff;
-    color:var(--main);
+    background:var(--card-2);
+    color:var(--main-dark);
     border:1px solid var(--main);
   }
   .btn.danger{
-    background:#fff;
+    background:var(--card-2);
     color:var(--danger);
     border:1px solid var(--danger);
   }
@@ -122,8 +128,8 @@
     background:var(--accent);
   }
   .btn.small{
-    padding:6px 10px;
-    font-size:12px;
+    padding:8px 12px;
+    font-size:14px;
   }
   .btn-row{
     display:flex;
@@ -132,19 +138,19 @@
     margin-top:8px;
   }
   .item-card{
-    border:1px solid var(--border);
+    border:2px solid var(--border);
     border-left:5px solid var(--main);
     border-radius:8px;
     padding:10px;
     margin-bottom:10px;
-    background:#fbfbf9;
+    background:var(--card-2);
   }
-  .item-card.grass{ border-left-color:#4a8c3f; }
-  .item-card.garden{ border-left-color:#3f8c7a; }
-  .item-card.pesticide{ border-left-color:#8c6d3f; }
-  .item-card.herbicide{ border-left-color:#6d8c3f; }
-  .item-card.transport{ border-left-color:#3f6a8c; }
-  .item-card.other{ border-left-color:#8c3f6d; }
+  .item-card.grass{ border-left-color:#5fae52; }
+  .item-card.garden{ border-left-color:#4fae9a; }
+  .item-card.pesticide{ border-left-color:#ae8a52; }
+  .item-card.herbicide{ border-left-color:#8aae52; }
+  .item-card.transport{ border-left-color:#5288ae; }
+  .item-card.other{ border-left-color:#ae5288; }
   .item-head{
     display:flex;
     justify-content:space-between;
@@ -152,7 +158,7 @@
     margin-bottom:6px;
   }
   .item-head .tag{
-    font-size:12px;
+    font-size:14px;
     font-weight:bold;
     color:var(--main-dark);
   }
@@ -160,31 +166,31 @@
     text-align:right;
     font-weight:bold;
     margin-top:6px;
-    font-size:14px;
+    font-size:16px;
   }
   .taxflag{
     display:flex;
     align-items:center;
     gap:6px;
-    font-size:13px;
+    font-size:15px;
     margin-top:4px;
   }
   .taxflag input{ width:auto; }
   .note{
-    font-size:12px;
+    font-size:13px;
     color:var(--muted);
     margin-top:4px;
   }
   .totals-table{
     width:100%;
     border-collapse:collapse;
-    font-size:15px;
+    font-size:17px;
   }
   .totals-table td{
     padding:6px 4px;
   }
   .totals-table tr.grand td{
-    font-size:19px;
+    font-size:22px;
     font-weight:bold;
     border-top:2px solid var(--main);
     color:var(--main-dark);
@@ -205,7 +211,7 @@
   }
   .modal-overlay.open{ display:flex; }
   .modal{
-    background:#fff;
+    background:var(--card);
     border-radius:10px;
     padding:16px;
     max-width:600px;
@@ -222,7 +228,7 @@
     margin-bottom:12px;
   }
   .settings-group h3{
-    font-size:13px;
+    font-size:15px;
     margin:0 0 8px 0;
     color:var(--main-dark);
   }
@@ -238,7 +244,7 @@
     float:right;
     background:none;
     border:none;
-    font-size:20px;
+    font-size:24px;
     color:var(--muted);
   }
   .status-msg{
@@ -246,11 +252,11 @@
     bottom:16px;
     left:50%;
     transform:translateX(-50%);
-    background:var(--main-dark);
+    background:var(--main);
     color:#fff;
     padding:10px 18px;
     border-radius:20px;
-    font-size:13px;
+    font-size:15px;
     z-index:100;
     opacity:0;
     transition:opacity .3s;
